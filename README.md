@@ -2,7 +2,7 @@
 
 CodePath WEB103 Final Project
 
-Designed and developed by: [Cristobal Talamantes, Eric Lee, Gildardo Orea, Javohir, Rijul Poudel, Shalom Donga]
+Designed and developed by: Cristobal Talamantes, Eric Lee, Gildardo Orea, Javohir Ergashev, Rijul Poudel, Shalom Donga
 
 🔗 Link to deployed app:
 
