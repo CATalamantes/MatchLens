@@ -1,0 +1,29 @@
+:root {
+  --ml-bg: #101209;
+  --ml-bg-soft: #16190f;
+  --ml-card: #1b1e15;
+  --ml-card-border: #2b2f22;
+  --ml-text: #e8eae2;
+  --ml-text-dim: #9aa08d;
+  --ml-green: #a9c283;
+  --ml-green-strong: #8ba565;
+  --ml-live: #e5484d;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(1200px 600px at 80% 0%, rgba(90, 110, 60, 0.18), transparent 60%),
+    var(--ml-bg);
+  color: var(--ml-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--ml-green);
+}

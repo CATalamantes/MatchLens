@@ -34,11 +34,11 @@ Backend:
 
 ## Features
 
-### Authentication
+### ✅Authentication
 
 Users can create an account and log in securely to access their profile and personalized features.
 
-[gif goes here]
+<img src='./Gif/Login.gif' title='Authentication Demo' width='600' alt='Authentication Demo' />
 
 ### Search
 

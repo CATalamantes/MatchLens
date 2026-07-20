@@ -1,0 +1,114 @@
+.ml-header {
+    background: #121409;
+    border-bottom: 1px solid var(--ml-card-border);
+}
+
+.ml-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1.5rem;
+}
+
+.ml-nav-left {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.ml-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--ml-green);
+    text-decoration: none;
+}
+
+.ml-nav-links {
+    display: flex;
+    list-style: none;
+    gap: 1.6rem;
+    margin: 0;
+    padding: 0;
+}
+
+.ml-nav-links a {
+    color: var(--ml-text-dim);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ml-nav-links a.active {
+    color: var(--ml-text);
+    border-bottom: 2px solid var(--ml-green);
+    padding-bottom: 4px;
+}
+
+.ml-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.ml-search {
+    background: #1c1f15;
+    border: 1px solid var(--ml-card-border);
+    border-radius: 999px;
+    color: var(--ml-text);
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    width: 210px;
+    margin: 0;
+}
+
+.ml-icon-btn {
+    background: #1c1f15;
+    border: 1px solid var(--ml-card-border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    font-size: 0.85rem;
+}
+
+.ml-icon-btn:hover {
+    background: #262a1c;
+    border-color: #3a3f2e;
+}
+
+.ml-ticker {
+    display: flex;
+    gap: 2.5rem;
+    padding: 0.5rem 1.5rem;
+    border-top: 1px solid var(--ml-card-border);
+    font-size: 0.75rem;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.ml-ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ml-text-dim);
+    font-weight: 600;
+}
+
+.ml-live-dot,
+.ml-live-label,
+.ml-ticker-time {
+    color: var(--ml-live);
+}
+
+.ml-ticker-teams strong {
+    color: var(--ml-text);
+}
+
+@media (max-width: 900px) {
+    .ml-nav-links {
+        display: none;
+    }
+}
