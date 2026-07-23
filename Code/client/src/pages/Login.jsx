@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import UsersAPI from '../services/UsersAPI'
 import { validateLogin } from '../utilities/validateLogin'
 import '../css/Login.css'
 
@@ -8,21 +9,33 @@ const Login = ({ title }) => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState(null)
+    const [loading, setLoading] = useState(false)
 
-    document.title = title
+    useEffect(() => {
+        document.title = title
+    }, [title])
 
-    const handleSignIn = (event) => {
+    const handleSignIn = async (event) => {
         event.preventDefault()
 
+        // Quick client-side check for instant feedback...
         const validationError = validateLogin(email, password)
         if (validationError) {
             setError(validationError)
             return
         }
 
-        // Auto-login: real-looking email + password gets you in.
-        localStorage.setItem('matchlens_user', JSON.stringify({ email }))
-        navigate('/home')
+        // ...but the server has the final say on whether login succeeds.
+        try {
+            setLoading(true)
+            const user = await UsersAPI.login(email, password)
+            localStorage.setItem('matchlens_user', JSON.stringify(user))
+            navigate('/home')
+        } catch (err) {
+            setError(err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -60,7 +73,9 @@ const Login = ({ title }) => {
 
                     { error && <p className='login-error'>{error}</p> }
 
-                    <button type='submit' className='login-submit'>Sign In</button>
+                    <button type='submit' className='login-submit' disabled={loading}>
+                        { loading ? 'Signing In...' : 'Sign In' }
+                    </button>
                 </form>
 
                 <div className='login-divider'>

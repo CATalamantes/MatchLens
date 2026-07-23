@@ -56,7 +56,10 @@ const Matchup = ({ top, bottom }) => (
 
 const Home = ({ title }) => {
     const navigate = useNavigate()
-    document.title = title
+
+    useEffect(() => {
+        document.title = title
+    }, [title])
 
     useEffect(() => {
         if (!localStorage.getItem('matchlens_user')) {
