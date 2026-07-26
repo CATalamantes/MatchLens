@@ -19,6 +19,40 @@ const resolveEmail = (profile) => {
         || `${id}+${login}@users.noreply.github.com`
 }
 
+// matches VARCHAR(50) on users.username in schema.sql
+const USERNAME_MAX = 50
+
+const isUsernameFree = async (username) => {
+    const { rowCount } = await pool.query(
+        'SELECT 1 FROM users WHERE username = $1',
+        [username]
+    )
+    return rowCount === 0
+}
+
+// A GitHub login is unique on GitHub, but username is NOT NULL UNIQUE here and
+// a local signup may already have claimed it. Fall back to a github_id-suffixed
+// variant, which can't collide with another GitHub account.
+const resolveUsername = async (login, githubId) => {
+    const withSuffix = (suffix) =>
+        login.slice(0, USERNAME_MAX - suffix.length) + suffix
+
+    const candidates = [login.slice(0, USERNAME_MAX), withSuffix(`-${githubId}`)]
+
+    for (const candidate of candidates) {
+        if (await isUsernameFree(candidate)) return candidate
+    }
+
+    // Both taken — only possible if a local user picked the suffixed form by
+    // hand. Walk a counter rather than letting the insert throw.
+    for (let n = 2; n <= 50; n++) {
+        const candidate = withSuffix(`-${githubId}-${n}`)
+        if (await isUsernameFree(candidate)) return candidate
+    }
+
+    throw new Error(`could not derive a free username for GitHub login "${login}"`)
+}
+
 const verify = async (accessToken, refreshToken, profile, callback) => {
     const {
         _json: { id, login, avatar_url }
@@ -34,15 +68,28 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
 
     try {
         // github_id, not username: GitHub logins are renameable, the id is not
-        const existing = await pool.query(
-            `UPDATE users
-                SET username = $2, profile_image_url = $3, access_token = $4
-                WHERE github_id = $1
-                RETURNING *`,
-            [userData.githubId, userData.username, userData.avatarUrl, accessToken]
+        const found = await pool.query(
+            'SELECT * FROM users WHERE github_id = $1',
+            [userData.githubId]
         )
+        const user = found.rows[0]
 
-        if (existing.rows[0]) {
+        if (user) {
+            // Track a GitHub rename, but only if that name is still free here —
+            // otherwise keep the current one so a collision can't lock them out.
+            const username =
+                user.username === userData.username || !(await isUsernameFree(userData.username))
+                    ? user.username
+                    : userData.username
+
+            const existing = await pool.query(
+                `UPDATE users
+                    SET username = $2, profile_image_url = $3, access_token = $4
+                    WHERE github_id = $1
+                    RETURNING *`,
+                [userData.githubId, username, userData.avatarUrl, accessToken]
+            )
+
             return callback(null, existing.rows[0])
         }
 
@@ -64,11 +111,12 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
 
         // Brand new user. No password_hash here — github_id satisfies the
         // users_has_credential check on its own.
+        const username = await resolveUsername(userData.username, userData.githubId)
         const created = await pool.query(
             `INSERT INTO users (email, username, github_id, profile_image_url, access_token)
             VALUES($1, $2, $3, $4, $5)
             RETURNING *`,
-            [userData.email, userData.username, userData.githubId, userData.avatarUrl, accessToken]
+            [userData.email, username, userData.githubId, userData.avatarUrl, accessToken]
         )
 
         return callback(null, created.rows[0])
