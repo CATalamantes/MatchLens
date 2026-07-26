@@ -2,6 +2,10 @@ import express from 'express'
 import path from 'path'
 import dotenv from 'dotenv'
 
+import passport from 'passport'
+import session from 'express-session'
+import { GitHub } from './config/auth.js'
+
 // import the router from each routes file
 import usersRouter from './routes/usersRoutes.js'
 import matchesRouter from './routes/matchesRoutes.js'
@@ -12,6 +16,7 @@ import commentsRouter from './routes/commentsRoutes.js'
 import followsRouter from './routes/followsRoutes.js'
 import notificationsRouter from './routes/notificationsRoutes.js'
 import videosRouter from './routes/videosRoutes.js'
+import authRouter from './routes/auth.js'
 
 dotenv.config({ path: '../.env' })
 
@@ -20,12 +25,36 @@ const PORT = process.env.PORT || 3000
 const app = express()
 
 app.use(express.json())
+app.use(session({
+    secret: 'codepath',
+    resave: false,
+    saveUninitialized: true
+}))
+app.use(cors({
+    origin: 'http://localhost:5173',
+    methods: 'GET,POST,PUT,DELETE,PATCH',
+    credentials: true
+}))
+
+// passport setup + strategies
+app.use(passport.initialize())
+app.use(passport.session())
+passport.use(GitHub)
+
+// session support
+passport.serializeUser((user, done) => {
+    done(null, user)
+})
+passport.deserializeUser((user, done) => {
+    done(null, user)
+})
 
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static('public'))
 }
 
 // specify the api path for the server to use
+app.use('/auth', authRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/matches', matchesRouter)
 app.use('/api/players', playersRouter)
