@@ -1,5 +1,6 @@
-import { pool } from './database.js'
 import './dotenv.js'
+
+import { pool } from './database.js'
 import userData from '../data/users.js'
 
 // Creates every table from the ER diagram, then seeds demo users.
@@ -16,6 +17,11 @@ const createTables = async () => {
             id SERIAL PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
+
+            githubid VARCHAR(255),
+            avatarurl varchar(500),
+            accesstoken varchar(500),
+
             favorite_team VARCHAR(100),
             points INTEGER DEFAULT 0,
             createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP

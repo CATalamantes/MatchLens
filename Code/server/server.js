@@ -1,10 +1,13 @@
+// must come first: loads .env before any module below reads process.env
+import './config/dotenv.js'
+
 import express from 'express'
 import path from 'path'
-import dotenv from 'dotenv'
+import cors from 'cors'
 
 import passport from 'passport'
 import session from 'express-session'
-import { GitHub } from './config/auth.js'
+import strategies from './config/auth.js'
 
 // import the router from each routes file
 import usersRouter from './routes/usersRoutes.js'
@@ -17,8 +20,6 @@ import followsRouter from './routes/followsRoutes.js'
 import notificationsRouter from './routes/notificationsRoutes.js'
 import videosRouter from './routes/videosRoutes.js'
 import authRouter from './routes/auth.js'
-
-dotenv.config({ path: '../.env' })
 
 const PORT = process.env.PORT || 3000
 
@@ -39,7 +40,7 @@ app.use(cors({
 // passport setup + strategies
 app.use(passport.initialize())
 app.use(passport.session())
-passport.use(GitHub)
+passport.use(strategies.GitHub)
 
 // session support
 passport.serializeUser((user, done) => {

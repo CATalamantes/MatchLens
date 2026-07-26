@@ -1,3 +1,5 @@
+import './dotenv.js'
+
 import GitHubStrategy from 'passport-github2'
 import { pool } from './database.js'
 
@@ -25,6 +27,8 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
 
         if (!user) {
             // if user does not exist, create a new entry in DB
+            // TODO: request email to insert and ?insert secure password? 
+            // for schema compatability (both are NOT NULL)
             const results = await pool.query(
                 `INSERT INTO users (githubid, username, avatarurl, accesstoken)
                 VALUES($1, $2, $3, $4)
@@ -41,4 +45,6 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
     }
 }
 
-export const Github = new GitHubStrategy(options, verify)
+const GitHub = new GitHubStrategy(options, verify)
+
+export default { GitHub }
