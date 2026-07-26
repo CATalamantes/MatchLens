@@ -67,6 +67,7 @@
 }
 
 .login-card input[type='email'],
+.login-card input[type='text'],
 .login-card input[type='password'] {
     background: #ffffff;
     color: #333;

@@ -6,6 +6,46 @@ const SALT_ROUNDS = 10;
 // Columns safe to hand back to the client — never password_hash or access_token
 const PUBLIC_COLUMNS = `user_id AS id, username, email, profile_image_url, total_points AS points`;
 
+// Same shape check the client runs in utilities/validateLogin.js
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+// Column widths come from users in db/schema.sql
+const EMAIL_MAX = 255;
+const USERNAME_MIN = 3;
+const USERNAME_MAX = 50;
+
+// bcrypt only reads the first 72 bytes of a password. Anything longer would be
+// silently truncated, so a user could "log in" with a prefix of what they typed.
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 72;
+
+const EMAIL_TAKEN = "That email is already registered.";
+const USERNAME_TAKEN = "That username is taken.";
+
+// Returns an error string, or null when the signup body is usable.
+function validateSignup(username, email, password) {
+    if (!username || !email || !password) {
+        return "Username, email and password are required";
+    }
+    if (!EMAIL_PATTERN.test(email) || email.length > EMAIL_MAX) {
+        return "Enter a valid email address (e.g. name@example.com).";
+    }
+    if (username.length < USERNAME_MIN || username.length > USERNAME_MAX) {
+        return `Username must be between ${USERNAME_MIN} and ${USERNAME_MAX} characters.`;
+    }
+    if (!USERNAME_PATTERN.test(username)) {
+        return "Username can only contain letters, numbers, hyphens and underscores.";
+    }
+    if (password.length < PASSWORD_MIN) {
+        return `Password must be at least ${PASSWORD_MIN} characters.`;
+    }
+    if (password.length > PASSWORD_MAX) {
+        return `Password must be ${PASSWORD_MAX} characters or fewer.`;
+    }
+    return null;
+}
+
 // GET /api/users — all users ranked by points (fan leaderboard)
 export async function getAllUsers(req, res) {
     try {
@@ -44,9 +84,11 @@ export async function login(req, res) {
             return res.status(401).json({ error: "Invalid email or password" });
         }
 
+        // Signup lowercases the address before storing it, so match the same way
+        // — otherwise "Carla@Example.com" can't sign in to carla@example.com.
         const result = await pool.query(
-            `SELECT ${PUBLIC_COLUMNS}, password_hash FROM users WHERE email = $1 LIMIT 1`,
-            [email],
+            `SELECT ${PUBLIC_COLUMNS}, password_hash FROM users WHERE LOWER(email) = $1 LIMIT 1`,
+            [email.trim().toLowerCase()],
         );
         const user = result.rows[0];
 
@@ -71,24 +113,56 @@ export async function login(req, res) {
 // POST /api/users — create an account (sign up)
 export async function createUser(req, res) {
     try {
-        const { username, email, password, profile_image_url = null } = req.body;
+        const username = (req.body.username ?? "").trim();
+        // Stored lowercased so the UNIQUE constraint actually stops someone
+        // re-registering the same address with different capitalisation.
+        const email = (req.body.email ?? "").trim().toLowerCase();
+        const password = req.body.password ?? "";
 
-        if (!username || !email || !password) {
-            return res
-                .status(400)
-                .json({ error: "Username, email and password are required" });
+        const validationError = validateSignup(username, email, password);
+        if (validationError) {
+            return res.status(400).json({ error: validationError });
+        }
+
+        // Check before hashing — bcrypt at cost 10 costs ~100ms, no sense
+        // spending it on an insert we already know will fail.
+        const existing = await pool.query(
+            `SELECT LOWER(email) = $1 AS email_taken,
+                    LOWER(username) = LOWER($2) AS username_taken
+             FROM users
+             WHERE LOWER(email) = $1 OR LOWER(username) = LOWER($2)`,
+            [email, username],
+        );
+        if (existing.rows.some((row) => row.email_taken)) {
+            return res.status(409).json({ error: EMAIL_TAKEN });
+        }
+        if (existing.rows.some((row) => row.username_taken)) {
+            return res.status(409).json({ error: USERNAME_TAKEN });
         }
 
         const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
         const result = await pool.query(
-            `INSERT INTO users (username, email, password_hash, profile_image_url, total_points)
-             VALUES ($1, $2, $3, $4, 0)
+            `INSERT INTO users (username, email, password_hash, total_points)
+             VALUES ($1, $2, $3, 0)
              RETURNING ${PUBLIC_COLUMNS}`,
-            [username, email, passwordHash, profile_image_url],
+            [username, email, passwordHash],
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
-        res.status(409).json({ error: error.message });
+        // The check above is check-then-insert, so a concurrent signup can still
+        // beat us to the name. The unique constraint is the real guarantee.
+        if (error.code === "23505") {
+            return res.status(409).json({
+                error:
+                    error.constraint === "users_username_key"
+                        ? USERNAME_TAKEN
+                        : EMAIL_TAKEN,
+            });
+        }
+        console.error("createUser failed:", error);
+        res.status(500).json({
+            error: "Could not create the account. Please try again.",
+        });
     }
 }
 

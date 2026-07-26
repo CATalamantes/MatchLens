@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import UsersAPI from '../services/UsersAPI'
-import { validateLogin } from '../utilities/validateLogin'
+import { validateSignup } from '../utilities/validateSignup'
 import '../css/Login.css'
 
-const Login = ({ title, api_url }) => {
+const Signup = ({ title, api_url }) => {
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
+    const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
 
@@ -17,20 +19,20 @@ const Login = ({ title, api_url }) => {
         document.title = title
     }, [title])
 
-    const handleSignIn = async (event) => {
+    const handleSignUp = async (event) => {
         event.preventDefault()
 
         // Quick client-side check for instant feedback...
-        const validationError = validateLogin(email, password)
+        const validationError = validateSignup(email, username, password, confirmPassword)
         if (validationError) {
             setError(validationError)
             return
         }
 
-        // ...but the server has the final say on whether login succeeds.
+        // ...but the server owns uniqueness, so it has the final say.
         try {
             setLoading(true)
-            const user = await UsersAPI.login(email, password)
+            const user = await UsersAPI.createUser({ username, email, password })
             localStorage.setItem('matchlens_user', JSON.stringify(user))
             navigate('/home')
         } catch (err) {
@@ -48,10 +50,10 @@ const Login = ({ title, api_url }) => {
             </div>
 
             <div className='login-card'>
-                <h1>Welcome Back</h1>
-                <p className='login-subtitle'>Enter your details to access your dashboard</p>
+                <h1>Create Account</h1>
+                <p className='login-subtitle'>Join MatchLens and start tracking every match</p>
 
-                <form onSubmit={handleSignIn} noValidate>
+                <form onSubmit={handleSignUp} noValidate>
                     <label className='login-label' htmlFor='email'>Email Address</label>
                     <input
                         id='email'
@@ -61,22 +63,37 @@ const Login = ({ title, api_url }) => {
                         onChange={(e) => { setEmail(e.target.value); setError(null) }}
                     />
 
-                    <div className='login-password-row'>
-                        <label className='login-label' htmlFor='password'>Password</label>
-                        <a href='#' className='login-forgot' onClick={(e) => e.preventDefault()}>Forgot Password?</a>
-                    </div>
+                    <label className='login-label' htmlFor='username'>Username</label>
+                    <input
+                        id='username'
+                        type='text'
+                        placeholder='your_username'
+                        value={username}
+                        onChange={(e) => { setUsername(e.target.value); setError(null) }}
+                    />
+
+                    <label className='login-label' htmlFor='password'>Password</label>
                     <input
                         id='password'
                         type='password'
-                        placeholder='••••••••'
+                        placeholder='At least 8 characters'
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setError(null) }}
+                    />
+
+                    <label className='login-label' htmlFor='confirm-password'>Confirm Password</label>
+                    <input
+                        id='confirm-password'
+                        type='password'
+                        placeholder='••••••••'
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setError(null) }}
                     />
 
                     { error && <p className='login-error'>{error}</p> }
 
                     <button type='submit' className='login-submit' disabled={loading}>
-                        { loading ? 'Signing In...' : 'Sign In' }
+                        { loading ? 'Creating Account...' : 'Create Account' }
                     </button>
                 </form>
 
@@ -94,7 +111,7 @@ const Login = ({ title, api_url }) => {
                 </div>
 
                 <p className='login-signup'>
-                    Don't have an account? <Link to='/signup'>Sign Up</Link>
+                    Already have an account? <Link to='/'>Sign In</Link>
                 </p>
             </div>
 
@@ -117,4 +134,4 @@ const Login = ({ title, api_url }) => {
     )
 }
 
-export default Login
+export default Signup

@@ -22,9 +22,12 @@ const resolveEmail = (profile) => {
 // matches VARCHAR(50) on users.username in schema.sql
 const USERNAME_MAX = 50
 
+// Case-insensitive to match the signup check in usersController.createUser —
+// otherwise GitHub "Carla" slips past a local "carla" and we end up with two
+// accounts that look identical to a reader.
 const isUsernameFree = async (username) => {
     const { rowCount } = await pool.query(
-        'SELECT 1 FROM users WHERE username = $1',
+        'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1)',
         [username]
     )
     return rowCount === 0
