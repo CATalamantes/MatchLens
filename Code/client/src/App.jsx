@@ -5,14 +5,16 @@ import Home from './pages/Home'
 import './App.css'
 
 const App = () => {
+  const API_URL = `http://localhost:3000`
+
   let element = useRoutes([
     {
       path: '/',
-      element: <Login title='MatchLens | Sign In' />
+      element: <Login api_url={API_URL} title='MatchLens | Sign In' />
     },
     {
       path: '/home',
-      element: <Home title='MatchLens | Home' />
+      element: <Home api_url={API_URL} title='MatchLens | Home' />
     }
   ])
 

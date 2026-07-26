@@ -4,12 +4,14 @@ import UsersAPI from '../services/UsersAPI'
 import { validateLogin } from '../utilities/validateLogin'
 import '../css/Login.css'
 
-const Login = ({ title }) => {
+const Login = ({ title, api_url }) => {
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
+
+    const AUTH_URL = `${api_url}/auth`
 
     useEffect(() => {
         document.title = title
@@ -83,12 +85,12 @@ const Login = ({ title }) => {
                 </div>
 
                 <div className='login-oauth'>
-                    <button type='button' className='login-oauth-btn'>
+                    <a href={`${AUTH_URL}/google`} type='button' className='login-oauth-btn'>
                         <span className='login-oauth-g'>G</span> Google
-                    </button>
-                    <button type='button' className='login-oauth-btn'>
-                        <span className='login-oauth-apple'></span> Apple
-                    </button>
+                    </a>
+                    <a href={`${AUTH_URL}/github`} type='button' className='login-oauth-btn'>
+                        <span className='login-oauth-apple'></span> GitHub
+                    </a>
                 </div>
 
                 <p className='login-signup'>
