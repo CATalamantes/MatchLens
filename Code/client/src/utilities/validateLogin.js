@@ -1,5 +1,6 @@
-// Auto-login rule: a login is "real" if the email is well-formed
-// and the password is non-empty. No database check is performed yet.
+// Shape check only, for instant feedback before we hit the network.
+// The server verifies the credentials against the database — see
+// usersController.login.
 export const isValidEmail = (email) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 

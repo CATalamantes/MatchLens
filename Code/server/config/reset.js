@@ -1,7 +1,10 @@
 import './dotenv.js'
 
+import bcrypt from 'bcrypt'
 import { pool } from './database.js'
 import userData from '../data/users.js'
+
+const SALT_ROUNDS = 10
 
 // Creates every table from the ER diagram, then seeds demo users.
 const createTables = async () => {
@@ -16,15 +19,21 @@ const createTables = async () => {
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
-            password VARCHAR(255) NOT NULL,
+            -- nullable: an OAuth user has no password of ours to store
+            password VARCHAR(255),
 
-            githubid VARCHAR(255),
+            username VARCHAR(255) UNIQUE,
+            githubid VARCHAR(255) UNIQUE,
             avatarurl varchar(500),
             accesstoken varchar(500),
 
             favorite_team VARCHAR(100),
             points INTEGER DEFAULT 0,
-            createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            -- every account must be reachable by *some* credential
+            CONSTRAINT users_has_credential
+                CHECK (password IS NOT NULL OR githubid IS NOT NULL)
         );
 
         CREATE TABLE IF NOT EXISTS followed_teams (
@@ -86,26 +95,21 @@ const createTables = async () => {
 const seedUsersTable = async () => {
     await createTables()
 
-    userData.forEach((user) => {
-        const insertQuery = {
-            text: 'INSERT INTO users (email, password, favorite_team, points) VALUES ($1, $2, $3, $4)'
-        }
-
-        const values = [
-            user.email,
-            user.password,
-            user.favorite_team,
-            user.points
-        ]
-
-        pool.query(insertQuery, values, (err) => {
-            if (err) {
-                console.error('⚠️ error inserting user', err)
-                return
-            }
+    // sequential so each password finishes hashing before it is inserted
+    for (const user of userData) {
+        try {
+            const hashed = await bcrypt.hash(user.password, SALT_ROUNDS)
+            await pool.query(
+                'INSERT INTO users (email, password, favorite_team, points) VALUES ($1, $2, $3, $4)',
+                [user.email, hashed, user.favorite_team, user.points]
+            )
             console.log(`✅ ${user.email} added successfully`)
-        })
-    })
+        } catch (err) {
+            console.error('⚠️ error inserting user', err)
+        }
+    }
+
+    await pool.end()
 }
 
 seedUsersTable()

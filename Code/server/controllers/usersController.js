@@ -1,4 +1,7 @@
+import bcrypt from 'bcrypt'
 import { pool } from '../config/database.js'
+
+const SALT_ROUNDS = 10
 
 // GET /api/users — all users ranked by points (fan leaderboard)
 export async function getAllUsers(req, res) {
@@ -31,20 +34,25 @@ export async function login(req, res) {
     try {
         const { email, password } = req.body
 
-        // Auto-login for now: any well-formed email + non-empty password succeeds.
-        // TODO: replace with a real credentials check:
-        //   const result = await pool.query(
-        //       'SELECT id, email, favorite_team, points FROM users WHERE email = $1 AND password = $2',
-        //       [email, password]
-        //   )
-        //   if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid email or password' })
-        //   res.status(200).json(result.rows[0])
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailPattern.test(email) || !password) {
+        if (!email || !password) {
             return res.status(401).json({ error: 'Invalid email or password' })
         }
 
-        res.status(200).json({ email, points: 24580 })
+        const result = await pool.query(
+            'SELECT id, email, password, favorite_team, points FROM users WHERE email = $1',
+            [email]
+        )
+        const user = result.rows[0]
+
+        // A GitHub-only account has no password to compare against — it has to
+        // sign in through OAuth. Same generic error either way, so this endpoint
+        // never reveals which emails are registered.
+        if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ error: 'Invalid email or password' })
+        }
+
+        const { password: _hash, ...safeUser } = user
+        res.status(200).json(safeUser)
     } catch (error) {
         res.status(409).json({ error: error.message })
     }
@@ -54,10 +62,16 @@ export async function login(req, res) {
 export async function createUser(req, res) {
     try {
         const { email, password, favorite_team } = req.body
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' })
+        }
+
+        const hashed = await bcrypt.hash(password, SALT_ROUNDS)
         const result = await pool.query(
             `INSERT INTO users (email, password, favorite_team)
              VALUES ($1, $2, $3) RETURNING id, email, favorite_team, points`,
-            [email, password, favorite_team]
+            [email, hashed, favorite_team]
         )
         res.status(201).json(result.rows[0])
     } catch (error) {

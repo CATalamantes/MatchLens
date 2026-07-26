@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navigation from '../components/Navigation'
+import AuthAPI from '../services/AuthAPI'
 import '../css/Home.css'
 
 // ── Dummy data ────────────────────────────────────────────────
@@ -54,18 +55,39 @@ const Matchup = ({ top, bottom }) => (
     </div>
 )
 
-const Home = ({ title }) => {
+const Home = ({ title, api_url }) => {
     const navigate = useNavigate()
+    // only blocks the first paint when there is nothing stored locally yet
+    const [checkingSession, setCheckingSession] = useState(
+        () => !localStorage.getItem('matchlens_user')
+    )
 
     useEffect(() => {
         document.title = title
     }, [title])
 
     useEffect(() => {
-        if (!localStorage.getItem('matchlens_user')) {
-            navigate('/')
-        }
-    }, [navigate])
+        if (localStorage.getItem('matchlens_user')) return
+
+        // Nothing local — but we may have just been redirected back from
+        // GitHub, where the session lives in a cookie on the API instead.
+        let active = true
+
+        AuthAPI.getSession(api_url).then((user) => {
+            if (!active) return
+
+            if (user) {
+                localStorage.setItem('matchlens_user', JSON.stringify(user))
+                setCheckingSession(false)
+            } else {
+                navigate('/')
+            }
+        })
+
+        return () => { active = false }
+    }, [navigate, api_url])
+
+    if (checkingSession) return null
 
     return (
         <div className='home-page'>

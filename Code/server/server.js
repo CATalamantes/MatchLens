@@ -8,6 +8,7 @@ import cors from 'cors'
 import passport from 'passport'
 import session from 'express-session'
 import strategies from './config/auth.js'
+import { pool } from './config/database.js'
 
 // import the router from each routes file
 import usersRouter from './routes/usersRoutes.js'
@@ -42,12 +43,22 @@ app.use(passport.initialize())
 app.use(passport.session())
 passport.use(strategies.GitHub)
 
-// session support
+// session support: store only the id in the session, then re-read the row on
+// each request so accesstoken/password never reach the session store or client
 passport.serializeUser((user, done) => {
-    done(null, user)
+    done(null, user.id)
 })
-passport.deserializeUser((user, done) => {
-    done(null, user)
+passport.deserializeUser(async (id, done) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, email, username, avatarurl, favorite_team, points
+             FROM users WHERE id = $1`,
+            [id]
+        )
+        done(null, result.rows[0] || false)
+    } catch (error) {
+        done(error)
+    }
 })
 
 if (process.env.NODE_ENV === 'production') {

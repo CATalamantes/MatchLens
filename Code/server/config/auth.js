@@ -9,37 +9,68 @@ const options = {
     callbackURL: 'http://localhost:3000/auth/github/callback'
 }
 
+// GitHub lets users hide their address, so fall back to the noreply alias
+// GitHub itself issues for that account — still a real, deliverable address.
+const resolveEmail = (profile) => {
+    const { id, login, email } = profile._json
+
+    return profile.emails?.[0]?.value
+        || email
+        || `${id}+${login}@users.noreply.github.com`
+}
+
 const verify = async (accessToken, refreshToken, profile, callback) => {
-    const { 
-        _json: { id, name, login, avatar_url } 
+    const {
+        _json: { id, login, avatar_url }
     } = profile
 
     const userData = {
-        githubId: id,
+        githubId: String(id),
         username: login,
         avatarUrl: avatar_url,
+        email: resolveEmail(profile),
         accessToken
     }
 
     try {
-        const result = await pool.query('SELECT * FROM users WHERE username=$1', [userData.username])
-        const user = result.rows[0]
-
-        if (!user) {
-            // if user does not exist, create a new entry in DB
-            // TODO: request email to insert and ?insert secure password? 
-            // for schema compatability (both are NOT NULL)
-            const results = await pool.query(
-                `INSERT INTO users (githubid, username, avatarurl, accesstoken)
-                VALUES($1, $2, $3, $4)
+        // githubid, not username: GitHub logins are renameable, the id is not
+        const existing = await pool.query(
+            `UPDATE users
+                SET username = $2, avatarurl = $3, accesstoken = $4
+                WHERE githubid = $1
                 RETURNING *`,
-                [userData.githubId, userData.username, userData.avatarUrl, accessToken]
-            )
-            const newUser = results.rows[0]
-            return callback(null, newUser)
+            [userData.githubId, userData.username, userData.avatarUrl, accessToken]
+        )
+
+        if (existing.rows[0]) {
+            return callback(null, existing.rows[0])
         }
-        // if user exists already, callback that result
-        return callback(null, user)
+
+        // No GitHub row yet. If they already signed up locally with this same
+        // address, attach GitHub to that account rather than tripping the
+        // email UNIQUE constraint on the insert below.
+        const linked = await pool.query(
+            `UPDATE users
+                SET githubid = $2, username = $3, avatarurl = $4, accesstoken = $5
+                WHERE email = $1 AND githubid IS NULL
+                RETURNING *`,
+            [userData.email, userData.githubId, userData.username, userData.avatarUrl, accessToken]
+        )
+
+        if (linked.rows[0]) {
+            return callback(null, linked.rows[0])
+        }
+
+        // Brand new user. No password column here — githubid satisfies the
+        // users_has_credential check on its own.
+        const created = await pool.query(
+            `INSERT INTO users (email, username, githubid, avatarurl, accesstoken)
+            VALUES($1, $2, $3, $4, $5)
+            RETURNING *`,
+            [userData.email, userData.username, userData.githubId, userData.avatarUrl, accessToken]
+        )
+
+        return callback(null, created.rows[0])
     } catch (error) {
         return callback(error)
     }
