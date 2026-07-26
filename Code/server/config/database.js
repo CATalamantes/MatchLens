@@ -1,16 +1,21 @@
-import './dotenv.js'
+import pg from "pg";
+import "./dotenv.js";
 
-import pg from 'pg'
-
-const config = {
+const pool = new pg.Pool({
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
     host: process.env.PGHOST,
     port: process.env.PGPORT,
     database: process.env.PGDATABASE,
-    ssl: {
-        rejectUnauthorized: false
-    }
-}
+    // Render's Postgres requires SSL for external connections.
+    ssl: { rejectUnauthorized: false },
+});
 
-export const pool = new pg.Pool(config)
+// Without this, a lost connection can crash the whole server with an
+// unhandled error instead of just logging it.
+pool.on("error", (err) => {
+    console.error("Unexpected error on idle Postgres client:", err.message);
+});
+
+export { pool };
+export default pool;

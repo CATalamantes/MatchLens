@@ -33,11 +33,11 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
     }
 
     try {
-        // githubid, not username: GitHub logins are renameable, the id is not
+        // github_id, not username: GitHub logins are renameable, the id is not
         const existing = await pool.query(
             `UPDATE users
-                SET username = $2, avatarurl = $3, accesstoken = $4
-                WHERE githubid = $1
+                SET username = $2, profile_image_url = $3, access_token = $4
+                WHERE github_id = $1
                 RETURNING *`,
             [userData.githubId, userData.username, userData.avatarUrl, accessToken]
         )
@@ -48,23 +48,24 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
 
         // No GitHub row yet. If they already signed up locally with this same
         // address, attach GitHub to that account rather than tripping the
-        // email UNIQUE constraint on the insert below.
+        // email UNIQUE constraint on the insert below. Their existing username
+        // is left alone — it's already UNIQUE and theirs to change.
         const linked = await pool.query(
             `UPDATE users
-                SET githubid = $2, username = $3, avatarurl = $4, accesstoken = $5
-                WHERE email = $1 AND githubid IS NULL
+                SET github_id = $2, profile_image_url = $3, access_token = $4
+                WHERE email = $1 AND github_id IS NULL
                 RETURNING *`,
-            [userData.email, userData.githubId, userData.username, userData.avatarUrl, accessToken]
+            [userData.email, userData.githubId, userData.avatarUrl, accessToken]
         )
 
         if (linked.rows[0]) {
             return callback(null, linked.rows[0])
         }
 
-        // Brand new user. No password column here — githubid satisfies the
+        // Brand new user. No password_hash here — github_id satisfies the
         // users_has_credential check on its own.
         const created = await pool.query(
-            `INSERT INTO users (email, username, githubid, avatarurl, accesstoken)
+            `INSERT INTO users (email, username, github_id, profile_image_url, access_token)
             VALUES($1, $2, $3, $4, $5)
             RETURNING *`,
             [userData.email, userData.username, userData.githubId, userData.avatarUrl, accessToken]

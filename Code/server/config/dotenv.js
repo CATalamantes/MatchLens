@@ -1,9 +1,10 @@
-import path from 'path'
-import { fileURLToPath } from 'url'
-import dotenv from 'dotenv'
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Resolve .env from this file's location (server/.env) instead of process.cwd(),
-// so it loads the same no matter which directory the process was started from.
-const configDir = path.dirname(fileURLToPath(import.meta.url))
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(configDir, '..', '.env') })
+const envPath = path.resolve(__dirname, "../.env");
+
+dotenv.config({ path: envPath });
