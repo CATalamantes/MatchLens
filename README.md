@@ -51,7 +51,7 @@ Users can search for players, teams, and matches to quickly find what they're lo
 
 Users can browse players (history, team, and stats), match details (score, lineup, venue, weather), and a calendar of fixtures.
 
-[gif goes here]
+<img src='./Gif/match.gif' title='Data Dispaly Demo' width='600' alt='Authentication Demo' />
 
 ### Leaderboards
 
@@ -88,7 +88,7 @@ Users can access video highlights or full-game footage of a match.
 
 Users can customize their profile with a profile image and personal details.
 
-[gif goes here]
+<img src='./Gif/profile.gif' title='User Profile Demo' width='600' alt='Authentication Demo' />
 
 ### [ADDITIONAL FEATURES GO HERE - ADD ALL FEATURES HERE IN THE FORMAT ABOVE; you will check these off and add gifs as you complete them]
 

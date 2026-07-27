@@ -1,0 +1,232 @@
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1rem 0;
+}
+
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 2.5rem;
+}
+
+.login-brand-mark {
+    background: #1c1f16;
+    color: var(--ml-green);
+    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    font-size: 0.8rem;
+}
+
+.login-brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2a2d22;
+    text-shadow: 0 0 1px rgba(255,255,255,0.05);
+    color: rgba(232, 234, 226, 0.25);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 560px;
+    background: rgba(27, 30, 21, 0.75);
+    border: 1px solid var(--ml-card-border);
+    border-radius: 16px;
+    padding: 3rem 3rem 2.5rem;
+    backdrop-filter: blur(6px);
+}
+
+.login-card h1 {
+    text-align: center;
+    font-size: 2.4rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem;
+    color: var(--ml-text);
+}
+
+.login-subtitle {
+    text-align: center;
+    color: var(--ml-text-dim);
+    margin: 0 0 2rem;
+    font-size: 1.05rem;
+}
+
+.login-label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--ml-text);
+    margin-bottom: 0.5rem;
+}
+
+.login-card input[type='email'],
+.login-card input[type='password'] {
+    background: #ffffff;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    margin-bottom: 1.4rem;
+}
+
+.login-card input::placeholder {
+    color: #aab0a4;
+}
+
+.login-password-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.login-forgot {
+    color: var(--ml-green);
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.login-error {
+    color: var(--ml-live);
+    font-size: 0.9rem;
+    margin: -0.5rem 0 1rem;
+}
+
+.login-submit {
+    width: 100%;
+    background: var(--ml-green);
+    border: none;
+    color: #1c210f;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    padding: 0.85rem;
+}
+
+.login-submit:hover,
+.login-submit:focus {
+    background: var(--ml-green-strong);
+    color: #1c210f;
+}
+
+.login-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: var(--ml-text-dim);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    margin: 1.8rem 0 1.6rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--ml-card-border);
+}
+
+.login-oauth {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.login-oauth-btn {
+    background: #23261c;
+    border: 1px solid var(--ml-card-border);
+    color: var(--ml-text);
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.login-oauth-btn:hover {
+    background: #2a2e21;
+    border-color: #3a3f2e;
+    color: var(--ml-text);
+}
+
+.login-oauth-g {
+    color: #ea4335;
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.login-oauth-apple {
+    font-size: 1.1rem;
+}
+
+.login-signup {
+    text-align: center;
+    margin: 2rem 0 0;
+    color: var(--ml-text);
+}
+
+.login-signup a {
+    color: var(--ml-green);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.login-links {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    color: var(--ml-text-dim);
+    font-size: 0.9rem;
+    margin: 2.5rem 0;
+    font-weight: 600;
+}
+
+.login-dot {
+    opacity: 0.5;
+}
+
+.login-footer {
+    margin-top: auto;
+    width: 100%;
+    border-top: 1px solid var(--ml-card-border);
+    padding: 1.2rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    color: var(--ml-text-dim);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.login-footer-right {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.login-status {
+    color: var(--ml-green);
+}
+
+@media (max-width: 640px) {
+    .login-card {
+        padding: 2rem 1.4rem;
+    }
+
+    .login-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+
+    .login-footer-right {
+        justify-content: center;
+    }
+}
