@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import UsersAPI from '../services/UsersAPI'
+import GitHubMark from '../components/GitHubMark'
 import { validateSignup } from '../utilities/validateSignup'
 import '../css/Login.css'
 
@@ -102,8 +103,8 @@ const Signup = ({ title, api_url }) => {
                 </div>
 
                 <div className='login-oauth'>
-                    <a href={`${AUTH_URL}/github`} type='button' className='login-oauth-btn'>
-                        <span className='login-oauth-apple'></span> GitHub
+                    <a href={`${AUTH_URL}/github`} className='login-oauth-btn'>
+                        <GitHubMark /> GitHub
                     </a>
                 </div>
 

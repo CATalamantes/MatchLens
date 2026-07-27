@@ -31,7 +31,6 @@ CREATE TABLE users (
     email             VARCHAR(255) NOT NULL UNIQUE,
     password_hash     VARCHAR(255),          -- NULL for a GitHub-only account
     github_id         VARCHAR(255) UNIQUE,   -- GitHub's numeric id, as text
-    access_token      VARCHAR(500),          -- GitHub token, never sent to the client
     profile_image_url VARCHAR(500),          -- GitHub avatar_url for OAuth users
     total_points      INTEGER NOT NULL DEFAULT 0,
     created_at        TIMESTAMP NOT NULL DEFAULT NOW(),

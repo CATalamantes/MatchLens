@@ -67,10 +67,10 @@ const Home = ({ title, api_url }) => {
     }, [title])
 
     useEffect(() => {
-        if (localStorage.getItem('matchlens_user')) return
-
-        // Nothing local — but we may have just been redirected back from
-        // GitHub, where the session lives in a cookie on the API instead.
+        // The server session is the source of truth for every sign-in path, so
+        // always revalidate. localStorage is only a hint that lets us paint
+        // immediately; trusting it outright left a stale entry rendering the
+        // page as logged-in while every request was actually unauthenticated.
         let active = true
 
         AuthAPI.getSession(api_url).then((user) => {
@@ -80,6 +80,7 @@ const Home = ({ title, api_url }) => {
                 localStorage.setItem('matchlens_user', JSON.stringify(user))
                 setCheckingSession(false)
             } else {
+                localStorage.removeItem('matchlens_user')
                 navigate('/')
             }
         })
@@ -91,7 +92,7 @@ const Home = ({ title, api_url }) => {
 
     return (
         <div className='home-page'>
-            <Navigation />
+            <Navigation api_url={api_url} />
 
             <main className='home-main'>
                 <h2 className='home-section-title'>Tournament Path</h2>

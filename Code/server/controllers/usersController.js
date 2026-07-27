@@ -1,9 +1,10 @@
 import bcrypt from "bcrypt";
 import { pool } from "../config/database.js";
+import { establishSession } from "../config/session.js";
 
 const SALT_ROUNDS = 10;
 
-// Columns safe to hand back to the client — never password_hash or access_token
+// Columns safe to hand back to the client — never password_hash
 const PUBLIC_COLUMNS = `user_id AS id, username, email, profile_image_url, total_points AS points`;
 
 // Same shape check the client runs in utilities/validateLogin.js
@@ -104,6 +105,11 @@ export async function login(req, res) {
         }
 
         const { password_hash: _hash, ...safeUser } = user;
+
+        // Same session an OAuth sign-in gets, so req.user is populated for every
+        // logged-in user rather than only the GitHub ones.
+        await establishSession(req, safeUser);
+
         res.status(200).json(safeUser);
     } catch (error) {
         res.status(409).json({ error: error.message });
@@ -147,6 +153,11 @@ export async function createUser(req, res) {
              RETURNING ${PUBLIC_COLUMNS}`,
             [username, email, passwordHash],
         );
+
+        // Signup navigates straight to /home, so it needs a live session there
+        // just as much as login does.
+        await establishSession(req, result.rows[0]);
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         // The check above is check-then-insert, so a concurrent signup can still

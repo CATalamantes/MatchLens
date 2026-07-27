@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import UsersAPI from '../services/UsersAPI'
+import GitHubMark from '../components/GitHubMark'
 import { validateLogin } from '../utilities/validateLogin'
 import '../css/Login.css'
 
+// The OAuth callback can only hand us a short code in the query string, so it
+// redirects here with ?error=<code> rather than failing silently.
+const OAUTH_ERRORS = {
+    oauth_denied: 'Sign-in was cancelled.',
+    oauth_failed: 'Something went wrong signing in with GitHub. Please try again.',
+    account_conflict: 'That email is already registered to a different account. Try signing in with your password.'
+}
+
 const Login = ({ title, api_url }) => {
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState(null)
@@ -16,6 +26,11 @@ const Login = ({ title, api_url }) => {
     useEffect(() => {
         document.title = title
     }, [title])
+
+    useEffect(() => {
+        const code = searchParams.get('error')
+        if (code) setError(OAUTH_ERRORS[code] ?? OAUTH_ERRORS.oauth_failed)
+    }, [searchParams])
 
     const handleSignIn = async (event) => {
         event.preventDefault()
@@ -85,8 +100,8 @@ const Login = ({ title, api_url }) => {
                 </div>
 
                 <div className='login-oauth'>
-                    <a href={`${AUTH_URL}/github`} type='button' className='login-oauth-btn'>
-                        <span className='login-oauth-apple'></span> GitHub
+                    <a href={`${AUTH_URL}/github`} className='login-oauth-btn'>
+                        <GitHubMark /> GitHub
                     </a>
                 </div>
 

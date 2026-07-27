@@ -2,11 +2,16 @@ import './dotenv.js'
 
 import GitHubStrategy from 'passport-github2'
 import { pool } from './database.js'
+import { GITHUB_CALLBACK_URL } from './urls.js'
 
 const options = {
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: 'http://localhost:3000/auth/github/callback'
+    callbackURL: GITHUB_CALLBACK_URL,
+    // Must be set here rather than on passport.authenticate(): passport-oauth2
+    // picks its state store in the constructor, and without this it falls back
+    // to a NullStore that verifies nothing — i.e. no CSRF protection at all.
+    state: true
 }
 
 // GitHub lets users hide their address, so fall back to the noreply alias
@@ -37,8 +42,10 @@ const isUsernameFree = async (username) => {
 // a local signup may already have claimed it. Fall back to a github_id-suffixed
 // variant, which can't collide with another GitHub account.
 const resolveUsername = async (login, githubId) => {
+    // Trim separators left dangling by the slice, so a truncated login yields
+    // "averylongname-123" rather than "averylongname--123".
     const withSuffix = (suffix) =>
-        login.slice(0, USERNAME_MAX - suffix.length) + suffix
+        login.slice(0, USERNAME_MAX - suffix.length).replace(/[-_]+$/, '') + suffix
 
     const candidates = [login.slice(0, USERNAME_MAX), withSuffix(`-${githubId}`)]
 
@@ -65,8 +72,11 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
         githubId: String(id),
         username: login,
         avatarUrl: avatar_url,
-        email: resolveEmail(profile),
-        accessToken
+        // Lowercased to match how usersController stores addresses. Comparing
+        // raw meant a GitHub "Carla@Example.com" never matched the local
+        // "carla@example.com", fell through to the INSERT below, and died on
+        // the email UNIQUE constraint.
+        email: resolveEmail(profile).toLowerCase()
     }
 
     try {
@@ -87,28 +97,43 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
 
             const existing = await pool.query(
                 `UPDATE users
-                    SET username = $2, profile_image_url = $3, access_token = $4
+                    SET username = $2, profile_image_url = $3
                     WHERE github_id = $1
                     RETURNING *`,
-                [userData.githubId, username, userData.avatarUrl, accessToken]
+                [userData.githubId, username, userData.avatarUrl]
             )
 
             return callback(null, existing.rows[0])
         }
 
-        // No GitHub row yet. If they already signed up locally with this same
-        // address, attach GitHub to that account rather than tripping the
-        // email UNIQUE constraint on the insert below. Their existing username
-        // is left alone — it's already UNIQUE and theirs to change.
-        const linked = await pool.query(
-            `UPDATE users
-                SET github_id = $2, profile_image_url = $3, access_token = $4
-                WHERE email = $1 AND github_id IS NULL
-                RETURNING *`,
-            [userData.email, userData.githubId, userData.avatarUrl, accessToken]
+        // No GitHub row yet. Look the address up explicitly instead of relying
+        // on a conditional UPDATE to miss: "no such email" and "email exists but
+        // is already linked to another GitHub account" both return zero rows,
+        // and only one of them should fall through to the INSERT.
+        const existingByEmail = await pool.query(
+            'SELECT user_id, github_id FROM users WHERE LOWER(email) = $1',
+            [userData.email]
         )
+        const match = existingByEmail.rows[0]
 
-        if (linked.rows[0]) {
+        if (match) {
+            if (match.github_id) {
+                // Some other GitHub account already owns this address — the id
+                // lookup above would have found it if it were this one.
+                return callback(null, false, { code: 'account_conflict' })
+            }
+
+            // They already signed up locally with this address, so attach
+            // GitHub to that account. Their existing username is left alone —
+            // it's already UNIQUE and theirs to change.
+            const linked = await pool.query(
+                `UPDATE users
+                    SET github_id = $2, profile_image_url = $3
+                    WHERE user_id = $1
+                    RETURNING *`,
+                [match.user_id, userData.githubId, userData.avatarUrl]
+            )
+
             return callback(null, linked.rows[0])
         }
 
@@ -116,14 +141,20 @@ const verify = async (accessToken, refreshToken, profile, callback) => {
         // users_has_credential check on its own.
         const username = await resolveUsername(userData.username, userData.githubId)
         const created = await pool.query(
-            `INSERT INTO users (email, username, github_id, profile_image_url, access_token)
-            VALUES($1, $2, $3, $4, $5)
+            `INSERT INTO users (email, username, github_id, profile_image_url)
+            VALUES($1, $2, $3, $4)
             RETURNING *`,
-            [userData.email, username, userData.githubId, userData.avatarUrl, accessToken]
+            [userData.email, username, userData.githubId, userData.avatarUrl]
         )
 
         return callback(null, created.rows[0])
     } catch (error) {
+        // The lookup above is check-then-insert, so a concurrent sign-in can
+        // still beat us to the row. The unique constraint is the real guarantee
+        // — surface it as a clean failure rather than a stack.
+        if (error.code === '23505') {
+            return callback(null, false, { code: 'account_conflict' })
+        }
         return callback(error)
     }
 }

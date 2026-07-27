@@ -1,20 +1,16 @@
 import express from 'express'
 import passport from 'passport'
 
-const router = express.Router()
+import { CLIENT_URL } from '../config/urls.js'
+import { establishSession } from '../config/session.js'
 
-// the Vite dev server, not this API — OAuth has to land back on the client
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+const router = express.Router()
 
 router.get('/login/success', (req, res) => {
     if (!req.user) {
         return res.status(401).json({ success: false, message: 'not authenticated' })
     }
     res.status(200).json({ success: true, user: req.user })
-})
-
-router.get('/login/failed', (req, res) => {
-    res.status(401).json({ success: false, message: "failure" })
 })
 
 router.get('/logout', (req, res, next) => {
@@ -40,12 +36,31 @@ router.get(
         scope: [ 'read:user', 'user:email' ]
     })
 )
-router.get(
-    '/github/callback',
-    passport.authenticate('github', {
-        successRedirect: `${CLIENT_URL}/home`,
-        failureRedirect: `${CLIENT_URL}/`
-    })
-)
+
+// A custom callback rather than successRedirect/failureRedirect: failureRedirect
+// does NOT fire when the verify callback errors — passport hands those to
+// next(err) — so the declarative form can't get the user back to the client at
+// all. This shape covers error, refusal and consent-denied the same way.
+router.get('/github/callback', (req, res, next) => {
+    passport.authenticate('github', async (err, user, info) => {
+        if (err) {
+            console.error('github oauth failed:', err)
+            return res.redirect(`${CLIENT_URL}/?error=oauth_failed`)
+        }
+
+        // Also covers the user cancelling at GitHub and a bad state parameter:
+        // passport-oauth2 turns both into a fail().
+        if (!user) {
+            return res.redirect(`${CLIENT_URL}/?error=${info?.code ?? 'oauth_denied'}`)
+        }
+
+        try {
+            await establishSession(req, user)
+            res.redirect(`${CLIENT_URL}/home`)
+        } catch (loginError) {
+            next(loginError)
+        }
+    })(req, res, next)
+})
 
 export default router

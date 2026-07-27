@@ -5,8 +5,14 @@ import Signup from './pages/Signup'
 import Home from './pages/Home'
 import './App.css'
 
+// '' means same origin, which is how the production build is served — vite
+// builds into server/public and Express serves it from there. In dev the client
+// is on :5173 and /auth isn't behind the vite proxy, so point at the API
+// directly. Set VITE_API_URL only for a split deploy.
+const API_URL =
+  import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:3000')
+
 const App = () => {
-  const API_URL = `http://localhost:3000`
 
   let element = useRoutes([
     {

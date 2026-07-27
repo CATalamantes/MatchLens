@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthAPI from '../services/AuthAPI'
 import '../css/Navigation.css'
 
 const liveScores = [
@@ -8,12 +9,18 @@ const liveScores = [
     { home: 'PSG', hs: 3, away: 'BAY', as: 2, time: "88'" }
 ]
 
-const Navigation = () => {
+const Navigation = ({ api_url }) => {
     const navigate = useNavigate()
 
-    const handleSignOut = () => {
-        localStorage.removeItem('matchlens_user')
-        navigate('/')
+    // AuthAPI.logout clears localStorage itself. The server also has to destroy
+    // the session — clearing only localStorage left the cookie alive, so the
+    // next visit to /home picked the session back up and silently signed you in.
+    const handleSignOut = async () => {
+        try {
+            await AuthAPI.logout(api_url)
+        } finally {
+            navigate('/')
+        }
     }
 
     return (

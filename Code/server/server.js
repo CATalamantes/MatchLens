@@ -8,6 +8,8 @@ import cors from "cors";
 import passport from "passport";
 import session from "express-session";
 import strategies from "./config/auth.js";
+import { sessionOptions } from "./config/session.js";
+import { CLIENT_URL, SERVER_URL } from "./config/urls.js";
 import { pool } from "./config/database.js";
 
 // import the router from each routes file
@@ -26,17 +28,17 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 
+// Behind Render's proxy Express sees the internal http hop, so without this the
+// `secure` session cookie is never set at all.
+if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+}
+
 app.use(express.json());
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET || "codepath",
-        resave: false,
-        saveUninitialized: true,
-    }),
-);
+app.use(session(sessionOptions));
 app.use(
     cors({
-        origin: "http://localhost:5173",
+        origin: CLIENT_URL,
         methods: "GET,POST,PUT,DELETE,PATCH",
         credentials: true,
     }),
@@ -48,8 +50,7 @@ app.use(passport.session());
 passport.use(strategies.GitHub);
 
 // session support: store only the id in the session, then re-read the row on
-// each request so access_token/password_hash never reach the session store
-// or the client
+// each request so password_hash never reaches the session store or the client
 // the strategy hands back a raw row (user_id); a deserialized row is aliased to id
 passport.serializeUser((user, done) => {
     done(null, user.user_id ?? user.id);
@@ -89,6 +90,15 @@ if (process.env.NODE_ENV === "production") {
     );
 }
 
+// Must be last, and must take four arguments — that arity is the only way
+// Express recognises an error handler. Without it a throw anywhere (notably in
+// the OAuth verify callback) renders a raw stack page to the browser.
+app.use((err, req, res, next) => {
+    console.error("unhandled error:", err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: "Something went wrong." });
+});
+
 app.listen(PORT, () => {
-    console.log(`server listening on http://localhost:${PORT}`);
+    console.log(`server listening on port ${PORT} (public origin: ${SERVER_URL})`);
 });

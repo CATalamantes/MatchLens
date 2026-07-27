@@ -7,8 +7,9 @@ const pool = new pg.Pool({
     host: process.env.PGHOST,
     port: process.env.PGPORT,
     database: process.env.PGDATABASE,
-    // Render's Postgres requires SSL for external connections.
-    ssl: { rejectUnauthorized: false },
+    // Render's Postgres requires SSL for external connections. Set PGSSL=false
+    // for a local Postgres, which usually doesn't speak SSL at all.
+    ssl: process.env.PGSSL === "false" ? false : { rejectUnauthorized: false },
 });
 
 // Without this, a lost connection can crash the whole server with an
