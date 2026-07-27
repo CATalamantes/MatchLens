@@ -1,26 +1,29 @@
-import React from 'react'
-import { useRoutes } from 'react-router-dom'
-import Login from './pages/Login'
+import { Routes, Route } from 'react-router-dom'
+import Sidebar from './components/Sidebar'
 import Home from './pages/Home'
-import './App.css'
+import Matches from './pages/Matches'
+import MatchDetail from './pages/MatchDetail'
+import Discover from './pages/Discover'
+import TeamDetail from './pages/TeamDetail'
+import PlayerDetail from './pages/PlayerDetail'
+import Leaderboard from './pages/Leaderboard'
+import Profile from './pages/Profile'
+import Login from './pages/Login'
 
-const App = () => {
-  let element = useRoutes([
-    {
-      path: '/',
-      element: <Login title='MatchLens | Sign In' />
-    },
-    {
-      path: '/home',
-      element: <Home title='MatchLens | Home' />
-    }
-  ])
-
+export default function App() {
   return (
-    <div className='app'>
-      { element }
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<Sidebar />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/matches" element={<Matches />} />
+        <Route path="/matches/:matchId" element={<MatchDetail />} />
+        <Route path="/discover" element={<Discover />} />
+        <Route path="/teams/:teamId" element={<TeamDetail />} />
+        <Route path="/players/:playerId" element={<PlayerDetail />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+    </Routes>
   )
 }
-
-export default App
