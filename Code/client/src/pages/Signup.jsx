@@ -102,9 +102,6 @@ const Signup = ({ title, api_url }) => {
                 </div>
 
                 <div className='login-oauth'>
-                    <a href={`${AUTH_URL}/google`} type='button' className='login-oauth-btn'>
-                        <span className='login-oauth-g'>G</span> Google
-                    </a>
                     <a href={`${AUTH_URL}/github`} type='button' className='login-oauth-btn'>
                         <span className='login-oauth-apple'></span> GitHub
                     </a>
