@@ -13,6 +13,7 @@ List each issue you completed this unit and the main file or folder where that w
 ## Features Completed This Unit
 List each feature you completed and checked off in readme.md this unit, one per line:
 - Example: Search events by category
+- Authentication (including OAuth)
 - Profile Customization
 - Fixture Calendar
 - Dashboard/Home (view/layout)
