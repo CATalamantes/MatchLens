@@ -6,11 +6,11 @@ export default function TeamCard({ team, isFollowing, onToggleFollow }) {
     <div className="flex w-[213px] shrink-0 flex-col gap-4 rounded-xl border border-dash bg-dash-card p-4">
       <Link to={`/teams/${team.api_team_id}`} className="flex flex-col items-center gap-4">
         <div className="flex w-full items-start justify-center">
-          <Crest label={team.name} className="size-16 rounded-full" textClassName="text-[20px]" />
+          <Crest label={team.name} src={team.logo} className="size-16 rounded-full" textClassName="text-[20px]" />
         </div>
         <div className="flex flex-col items-center gap-1 text-center">
           <p className="w-full truncate text-[13px] font-bold text-white">{team.name}</p>
-          <p className="w-full truncate text-[11px] font-semibold text-secondary">{team.region}</p>
+          <p className="w-full truncate text-[11px] font-semibold text-secondary">{team.group}</p>
         </div>
       </Link>
       <button

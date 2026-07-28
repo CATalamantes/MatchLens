@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useSessionUser } from '../hooks/useSessionUser'
-import { teams as followableTeams } from '../mocks/teams'
 import Avatar from '../components/Avatar'
 import Crest from '../components/Crest'
 import Skeleton from '../components/Skeleton'
@@ -30,12 +29,16 @@ function ToggleSwitch({ checked, onChange }) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={onChange}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-dash-input'}`}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dash-card ${
+        checked ? 'bg-primary' : 'bg-dash-input'
+      }`}
     >
       <span
-        className={`absolute top-0.5 size-4 rounded-full bg-white transition-transform ${
-          checked ? 'translate-x-[18px]' : 'translate-x-0.5'
+        className={`absolute top-0.5 size-4 rounded-full bg-white transition-[left] ${
+          checked ? 'left-[18px]' : 'left-0.5'
         }`}
       />
     </button>
@@ -54,6 +57,9 @@ export default function Profile() {
   const [followsLoadError, setFollowsLoadError] = useState(null)
   const [followError, setFollowError] = useState(null)
   const [showTeamPicker, setShowTeamPicker] = useState(false)
+  const [allTeams, setAllTeams] = useState([])
+  const [loadingAllTeams, setLoadingAllTeams] = useState(true)
+  const [allTeamsError, setAllTeamsError] = useState(null)
 
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(null)
@@ -109,6 +115,22 @@ export default function Profile() {
       })
       .finally(() => setLoadingFollows(false))
   }, [userId])
+
+  useEffect(() => {
+    setLoadingAllTeams(true)
+    setAllTeamsError(null)
+    fetch(`${API_URL}/api/teams`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load teams')
+        return res.json()
+      })
+      .then((data) => setAllTeams(data.map((t) => ({ ...t, api_team_id: String(t.id) }))))
+      .catch((err) => {
+        console.error('Failed to load teams', err)
+        setAllTeamsError('Could not load the team list.')
+      })
+      .finally(() => setLoadingAllTeams(false))
+  }, [])
 
   async function handleAvatarChange(event) {
     const file = event.target.files?.[0]
@@ -189,9 +211,10 @@ export default function Profile() {
     }
   }
 
-  const pickableTeams = followableTeams.filter(
+  const pickableTeams = allTeams.filter(
     (team) => !followedTeams.some((followed) => String(followed.api_team_id) === String(team.api_team_id)),
   )
+  const teamLogoById = Object.fromEntries(allTeams.map((team) => [team.api_team_id, team.logo]))
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -329,7 +352,7 @@ export default function Profile() {
                 followedTeams.map((team) => (
                   <div key={team.followed_team_id} className="flex items-center justify-between border-b border-dash pb-3">
                     <div className="flex items-center gap-3">
-                      <Crest compact label={team.team_name} className="size-6 rounded" />
+                      <Crest compact label={team.team_name} src={teamLogoById[team.api_team_id]} className="size-6 rounded" />
                       <p className="text-[14px] font-bold text-white">{team.team_name}</p>
                     </div>
                     <button
@@ -348,19 +371,26 @@ export default function Profile() {
 
             {showTeamPicker ? (
               <div className="flex flex-col gap-2">
-                {pickableTeams.map((team) => (
-                  <button
-                    key={team.api_team_id}
-                    type="button"
-                    onClick={() => handleFollowTeam(team)}
-                    className="flex items-center justify-between rounded-lg border border-dash bg-dashboard px-3 py-2 text-left text-[13px] text-white"
-                  >
-                    {team.name}
-                    <span className="text-primary">+ Follow</span>
-                  </button>
-                ))}
-                {pickableTeams.length === 0 && (
-                  <p className="text-[12px] text-secondary">All available teams are already followed.</p>
+                {allTeamsError && <p className="text-[12px] text-dash-live">{allTeamsError}</p>}
+                {loadingAllTeams ? (
+                  <p className="text-[12px] text-secondary">Loading teams…</p>
+                ) : (
+                  <>
+                    {pickableTeams.map((team) => (
+                      <button
+                        key={team.api_team_id}
+                        type="button"
+                        onClick={() => handleFollowTeam(team)}
+                        className="flex items-center justify-between rounded-lg border border-dash bg-dashboard px-3 py-2 text-left text-[13px] text-white"
+                      >
+                        {team.name}
+                        <span className="text-primary">+ Follow</span>
+                      </button>
+                    ))}
+                    {pickableTeams.length === 0 && !allTeamsError && (
+                      <p className="text-[12px] text-secondary">All available teams are already followed.</p>
+                    )}
+                  </>
                 )}
               </div>
             ) : (

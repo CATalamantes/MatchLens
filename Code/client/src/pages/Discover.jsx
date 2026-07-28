@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import TeamCard from '../components/TeamCard'
 import { useSessionUser } from '../hooks/useSessionUser'
 import { useTeamSearch } from '../hooks/useTeamSearch'
-import { teams } from '../mocks/teams'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -10,19 +9,14 @@ const TRENDING_TAGS = ['Lionel Messi', 'Kylian Mbappé', 'World Cup 2026', 'Arge
 
 const GROUP_TABS = [
   { label: 'All', value: 'All' },
-  { label: 'Group A', value: 'A' },
-  { label: 'Group B', value: 'B' },
-  { label: 'Group C', value: 'C' },
-  { label: 'Group D', value: 'D' },
-  { label: 'Group E', value: 'E' },
-  { label: 'Group F', value: 'F' },
-]
-
-const FOOTER_COLUMNS = [
-  { title: 'Explore', links: ['Live Matches', 'Standings', 'Highlights', 'Predictions'] },
-  { title: 'Stats', links: ['Player Stats', 'Team Stats', 'Group Standings', 'Head-to-Head Nations'] },
-  { title: 'Support', links: ['Help Center', 'Contact Us', 'FAQ', 'Feedback'] },
-  { title: 'Legal', links: ['Terms of Service', 'Privacy Policy', 'Data Sources', 'API Access'] },
+  { label: 'Group A', value: 'Group A' },
+  { label: 'Group B', value: 'Group B' },
+  { label: 'Group C', value: 'Group C' },
+  { label: 'Group D', value: 'Group D' },
+  { label: 'Group E', value: 'Group E' },
+  { label: 'Group F', value: 'Group F' },
+  { label: 'Group G', value: 'Group G' },
+  { label: 'Group H', value: 'Group H' },
 ]
 
 function SearchIcon({ className }) {
@@ -38,11 +32,30 @@ export default function Discover() {
   const sessionUser = useSessionUser()
   const userId = sessionUser?.id
 
+  const [teams, setTeams] = useState([])
+  const [teamsLoading, setTeamsLoading] = useState(true)
+  const [teamsError, setTeamsError] = useState(null)
   const { searchTerm, setSearchTerm, activeGroup, setActiveGroup, filteredTeams } = useTeamSearch(teams)
   const [followedTeams, setFollowedTeams] = useState([])
   const [followsLoading, setFollowsLoading] = useState(true)
   const [followsLoadError, setFollowsLoadError] = useState(null)
   const [followError, setFollowError] = useState(null)
+
+  useEffect(() => {
+    setTeamsLoading(true)
+    setTeamsError(null)
+    fetch(`${API_URL}/api/teams`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load teams')
+        return res.json()
+      })
+      .then((data) => setTeams(data.map((t) => ({ ...t, api_team_id: String(t.id) }))))
+      .catch((err) => {
+        console.error('Failed to load teams', err)
+        setTeamsError('Could not load teams. Please try again.')
+      })
+      .finally(() => setTeamsLoading(false))
+  }, [])
 
   useEffect(() => {
     if (!userId) {
@@ -156,43 +169,23 @@ export default function Discover() {
           <p className="text-[18px] font-bold text-white">Top Featured Teams</p>
           <p className="text-[13px] font-semibold text-primary">SEE ALL</p>
         </div>
+        {teamsError && <p className="text-[12px] text-dash-live">{teamsError}</p>}
         {followsLoadError && <p className="text-[12px] text-dash-live">{followsLoadError}</p>}
         {followError && <p className="text-[12px] text-dash-live">{followError}</p>}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {filteredTeams.map((team) => (
-            <TeamCard
-              key={team.api_team_id}
-              team={team}
-              isFollowing={followedTeams.some((f) => String(f.api_team_id) === String(team.api_team_id))}
-              onToggleFollow={() => handleToggleFollow(team)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex flex-col gap-6 rounded-2xl border border-dash bg-dash-card p-8">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
-          {FOOTER_COLUMNS.map((column) => (
-            <div key={column.title} className="flex flex-col gap-3">
-              <p className="text-[11px] font-bold uppercase text-secondary">{column.title}</p>
-              <div className="flex flex-col gap-2.5">
-                {column.links.map((link) => (
-                  <p key={link} className="text-[13px] text-white">
-                    {link}
-                  </p>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="h-px w-full bg-dash" />
-        <div className="flex items-center justify-between">
-          <p className="text-[16px] font-bold text-white">
-            Match<span className="text-primary">L</span>ens
-          </p>
-          <p className="text-[13px] text-secondary">© 2026 MatchLens Platform. All rights reserved.</p>
-        </div>
+        {teamsLoading ? (
+          <p className="text-[13px] text-secondary">Loading teams…</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {filteredTeams.map((team) => (
+              <TeamCard
+                key={team.api_team_id}
+                team={team}
+                isFollowing={followedTeams.some((f) => String(f.api_team_id) === String(team.api_team_id))}
+                onToggleFollow={() => handleToggleFollow(team)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
