@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import VideoPlayer from '../components/VideoPlayer'
-import CommentThread from '../components/CommentThread'
+import MatchComments from '../components/MatchComments'
 import Crest from '../components/Crest'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
@@ -142,7 +142,7 @@ export default function MatchDetail() {
         {activeTab === 'Overview' && <InProgress label="Key match events" />}
         {activeTab === 'Lineup' && <InProgress label="Tactical formations and lineups" />}
         {activeTab === 'Stats' && <InProgress label="Match statistics and possession" />}
-        {activeTab === 'Comments' && <CommentThread />}
+        {activeTab === 'Comments' && <MatchComments apiMatchId={matchId} />}
         {activeTab === 'Highlights' && <VideoPlayer title={`${match.home} vs ${match.away} — Highlights`} />}
       </div>
 
