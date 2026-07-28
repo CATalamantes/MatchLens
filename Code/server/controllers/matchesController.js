@@ -1,35 +1,35 @@
-// Matches come from the external football data API, not our database.
-// The server acts as the middleman so the API key stays hidden here.
-// TODO: replace the dummy data with real fetches to the football API.
+import { footballApiGet } from "../config/footballApi.js";
 
-const dummyMatches = [
-    { id: 101, home: 'MCI', away: 'LIV', home_score: 2, away_score: 1, status: 'LIVE', minute: 72, date: '2026-07-23', venue: 'Etihad Stadium' },
-    { id: 102, home: 'RMA', away: 'FCB', home_score: 0, away_score: 0, status: 'HT', minute: 45, date: '2026-07-23', venue: 'Santiago Bernabéu' },
-    { id: 103, home: 'PSG', away: 'BAY', home_score: 3, away_score: 2, status: 'LIVE', minute: 88, date: '2026-07-23', venue: 'Parc des Princes' },
-    { id: 104, home: 'NOR', away: 'ENG', home_score: null, away_score: null, status: 'UPCOMING', minute: null, date: '2026-07-24', venue: 'Ullevaal Stadion' }
-]
-
-// GET /api/matches — fixtures list (supports ?date=YYYY-MM-DD for the calendar)
-export async function getAllMatches(req, res) {
-    try {
-        const { date } = req.query
-        const matches = date
-            ? dummyMatches.filter((m) => m.date === date)
-            : dummyMatches
-        res.status(200).json(matches)
-    } catch (error) {
-        res.status(409).json({ error: error.message })
-    }
+function mapFixture(f) {
+  return {
+    id: f.fixture.id,
+    home: f.teams.home.name,
+    away: f.teams.away.name,
+    home_score: f.goals.home,
+    away_score: f.goals.away,
+    status: f.fixture.status.short,
+    minute: f.fixture.status.elapsed,
+    date: f.fixture.date.slice(0, 10),
+    venue: f.fixture.venue.name,
+  };
 }
 
-// GET /api/matches/:id — full match detail (score, lineups, venue, weather)
+export async function getAllMatches(req, res) {
+  try {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const data = await footballApiGet(`/fixtures?date=${date}`);
+    res.status(200).json(data.map(mapFixture));
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+}
+
 export async function getMatchById(req, res) {
-    try {
-        const id = parseInt(req.params.id)
-        const match = dummyMatches.find((m) => m.id === id)
-        if (!match) return res.status(404).json({ error: 'Match not found' })
-        res.status(200).json(match)
-    } catch (error) {
-        res.status(409).json({ error: error.message })
-    }
+  try {
+    const data = await footballApiGet(`/fixtures?id=${req.params.id}`);
+    if (!data.length) return res.status(404).json({ error: "Match not found" });
+    res.status(200).json(mapFixture(data[0]));
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
 }
