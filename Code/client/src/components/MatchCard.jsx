@@ -10,7 +10,7 @@ function formatDate(dateString) {
 }
 
 export default function MatchCard({ match }) {
-  const { id, home, away, home_score, away_score, status, minute, date } = match
+  const { id, home, away, home_score, away_score, status, minute, date, time } = match
   const isLive = status === 'LIVE'
 
   return (
@@ -19,7 +19,10 @@ export default function MatchCard({ match }) {
       className="flex flex-col gap-3 rounded-xl border border-dash bg-dash-card p-3"
     >
       <div className="flex items-start justify-between text-overline whitespace-nowrap">
-        <p className="font-semibold text-secondary">{formatDate(date)}</p>
+        <p className="font-semibold text-secondary">
+          {formatDate(date)}
+          {time ? ` · ${time}` : ''}
+        </p>
         <p className={isLive ? 'font-bold text-primary' : 'font-bold text-secondary'}>
           {isLive && minute != null ? `LIVE ${minute}'` : status}
         </p>

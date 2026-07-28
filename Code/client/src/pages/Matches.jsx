@@ -3,15 +3,6 @@ import MatchCard from '../components/MatchCard'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
-// The live API only ever emits LIVE | HT | UPCOMING today. FT is a real
-// status the schema supports but no fixture currently carries, so the
-// Results tab is an honest empty state rather than a broken filter.
-const TABS = [
-  { label: 'Live', statuses: ['LIVE', 'HT'] },
-  { label: 'Upcoming', statuses: ['UPCOMING'] },
-  { label: 'Results', statuses: ['FT'] },
-]
-
 function SearchIcon({ className }) {
   return (
     <svg viewBox="0 0 14 14" fill="none" className={className}>
@@ -27,13 +18,12 @@ export default function Matches() {
   const [error, setError] = useState(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('Live')
+  const [activeStage, setActiveStage] = useState('All')
 
   useEffect(() => {
     setLoading(true)
     setError(null)
-    const query = selectedDate ? `?date=${selectedDate}` : ''
-    fetch(`${API_URL}/api/matches${query}`)
+    fetch(`${API_URL}/api/matches`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load matches')
         return res.json()
@@ -44,47 +34,57 @@ export default function Matches() {
         setError('Could not load matches. Please try again.')
       })
       .finally(() => setLoading(false))
-  }, [selectedDate])
+  }, [])
 
-  const activeStatuses = TABS.find((tab) => tab.label === activeTab).statuses
+  // Real tournament stages, in the order they occur — the fixed set this
+  // page filters by instead of a Live/Upcoming/Results split that only ever
+  // made sense for a tournament still in progress.
+  const stages = useMemo(() => {
+    const seen = []
+    for (const match of matches) {
+      if (match.round && !seen.includes(match.round)) seen.push(match.round)
+    }
+    return ['All', ...seen]
+  }, [matches])
+
   const filteredMatches = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
     return matches
-      .filter((match) => activeStatuses.includes(match.status))
+      .filter((match) => activeStage === 'All' || match.round === activeStage)
+      .filter((match) => !selectedDate || match.date === selectedDate)
       .filter((match) =>
         term === ''
           ? true
           : [match.home, match.away, match.venue].some((field) => field?.toLowerCase().includes(term)),
       )
-  }, [matches, activeStatuses, searchTerm])
+  }, [matches, activeStage, selectedDate, searchTerm])
 
-  const featuredLiveMatch = matches.find((match) => match.status === 'LIVE' || match.status === 'HT')
+  const finalMatch = matches.find((match) => match.round === 'Final')
 
   return (
     <div className="flex gap-6 p-6">
       <div className="flex flex-1 flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-h1 text-white">Matches</h1>
+          <h1 className="text-h1 text-white">Fixture Calendar</h1>
           <p className="text-[13px] text-secondary">
-            Live analytics and deep match insights across the FIFA World Cup 2026.
+            Every FIFA World Cup 2026 match, group stage through final — filter by team or stage.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-5">
-            {TABS.map((tab) => {
-              const isActive = tab.label === activeTab
+          <div className="flex flex-wrap items-center gap-2">
+            {stages.map((stage) => {
+              const isActive = stage === activeStage
               return (
                 <button
-                  key={tab.label}
+                  key={stage}
                   type="button"
-                  onClick={() => setActiveTab(tab.label)}
-                  className="flex flex-col items-center gap-1.5"
+                  onClick={() => setActiveStage(stage)}
+                  className={`rounded-lg border border-dash px-3 py-1.5 text-[12px] font-bold ${
+                    isActive ? 'bg-primary text-dash-sidebar' : 'bg-dash-card text-white'
+                  }`}
                 >
-                  <span className={`text-[14px] ${isActive ? 'font-bold text-primary' : 'font-medium text-secondary'}`}>
-                    {tab.label}
-                  </span>
-                  <span className={`h-[3px] w-6 rounded-full ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
+                  {stage}
                 </button>
               )
             })}
@@ -123,9 +123,7 @@ export default function Matches() {
         {error && <p className="text-[13px] text-dash-live">{error}</p>}
 
         {!loading && !error && filteredMatches.length === 0 && (
-          <p className="text-[13px] text-secondary">
-            No {activeTab.toLowerCase()} matches{selectedDate ? ` on ${selectedDate}` : ''}.
-          </p>
+          <p className="text-[13px] text-secondary">No matches match these filters.</p>
         )}
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -138,23 +136,18 @@ export default function Matches() {
       <aside className="flex w-[280px] shrink-0 flex-col gap-6 rounded-2xl border border-dash bg-dash-sidebar p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="size-2 shrink-0 rounded-full bg-dash-live" />
-            <p className="text-[14px] font-bold text-white">Live Match Stats</p>
+            <span className="size-2 shrink-0 rounded-full bg-primary" />
+            <p className="text-[14px] font-bold text-white">Tournament Final</p>
           </div>
-          {featuredLiveMatch && (
-            <p className="text-[12px] font-semibold text-primary">
-              {featuredLiveMatch.home} vs {featuredLiveMatch.away}
-            </p>
-          )}
         </div>
 
-        {featuredLiveMatch ? (
+        {finalMatch ? (
           <>
             <div className="relative flex h-[100px] w-full flex-col justify-end overflow-hidden rounded-lg bg-gradient-to-br from-dash-card to-black p-3">
-              <p className="text-[14px] font-bold text-white">{featuredLiveMatch.venue}</p>
-              <p className="text-[10px] text-primary">
-                {featuredLiveMatch.status === 'HT' ? 'Half-time' : `${featuredLiveMatch.minute}' live`}
+              <p className="text-[14px] font-bold text-white">
+                {finalMatch.home} {finalMatch.home_score} - {finalMatch.away_score} {finalMatch.away}
               </p>
+              <p className="text-[10px] text-primary">{finalMatch.venue}</p>
             </div>
 
             <div className="flex flex-col gap-2 rounded-lg border border-dash bg-dashboard p-3">
@@ -165,13 +158,13 @@ export default function Matches() {
             </div>
           </>
         ) : (
-          <p className="text-[12px] text-secondary">No live match right now.</p>
+          <p className="text-[12px] text-secondary">No matches loaded yet.</p>
         )}
 
         <div className="h-px w-full bg-dash" />
 
         <div className="flex flex-col gap-1.5 rounded-lg border border-dash bg-dashboard p-3">
-          <p className="text-[12px] font-bold text-secondary">⚡ Model Verdict</p>
+          <p className="text-[12px] font-bold text-secondary">Model Verdict</p>
           <p className="text-[11px] text-secondary">
             Prediction modeling isn't wired up yet — in progress.
           </p>
