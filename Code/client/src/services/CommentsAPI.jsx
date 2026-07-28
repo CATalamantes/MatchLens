@@ -7,7 +7,7 @@ const handleResponse = async (response) => {
 }
 
 const getComments = async (apiMatchId) => {
-  const response = await fetch(`/api/comments?api_match_id=${encodeURIComponent(apiMatchId)}`)
+  const response = await fetch(`/api/comments/match/${encodeURIComponent(apiMatchId)}`)
   return handleResponse(response)
 }
 

@@ -1,225 +1,167 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import Navigation from '../components/Navigation'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import VideoPlayer from '../components/VideoPlayer'
 import MatchComments from '../components/MatchComments'
-import '../css/MatchDetail.css'
+import Crest from '../components/Crest'
 
-// ── Dummy data (placeholder until the external match-data API is wired up) ──
-const matchInfo = {
-    competition: 'Premier League',
-    homeTeam: { name: 'Arsenal', badge: '🔴', score: 2 },
-    awayTeam: { name: 'Chelsea', badge: '🔵', score: 1 },
-    minute: "74'",
-    isLive: true,
-    winProbability: { home: 64, away: 36 }
+const API_URL = import.meta.env.VITE_API_URL ?? ''
+
+const TABS = ['Overview', 'Lineup', 'Stats', 'Comments', 'Highlights']
+
+function formatDate(dateString) {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
-const matchEvents = [
-    { minute: 24, type: 'goal', team: 'home', player: 'Bukayo Saka', note: 'Arsenal 1 - 0 Chelsea' },
-    { minute: 41, type: 'yellow-card', team: 'away', player: 'Enzo Fernández', note: 'Yellow Card' },
-    { minute: 56, type: 'goal', team: 'home', player: 'Gabriel Martinelli', note: 'Arsenal 2 - 0 Chelsea' },
-    { minute: 68, type: 'goal', team: 'away', player: 'Cole Palmer', note: 'Arsenal 2 - 1 Chelsea' }
-]
-
-const lineupFormation = '4-3-3'
-const lineup = [
-    { number: 29, name: 'Havertz', x: 50, y: 12 },
-    { number: 41, name: 'Rice', x: 50, y: 42 },
-    { number: 4, name: 'White', x: 22, y: 68 },
-    { number: 2, name: 'Saliba', x: 50, y: 72 },
-    { number: 22, name: 'Raya', x: 50, y: 92 }
-]
-
-const keyStats = [
-    { label: 'Shots', home: 12, away: 8 },
-    { label: 'Shots on Target', home: 5, away: 3 },
-    { label: 'Pass Accuracy', home: 88, away: 82 },
-    { label: 'Fouls', home: 14, away: 11 }
-]
-
-const possession = { home: 58, away: 42 }
-
-const highlight = { title: "Bukayo Saka's Clinical Opener", tag: "24' GOAL" }
-
-const tabs = ['Overview', 'Lineup', 'Stats', 'Comments', 'Highlights']
-// ─────────────────────────────────────────────────────────────────────────
-
-const StatBar = ({ label, home, away }) => (
-    <div className='stat-bar-row'>
-        <span className='stat-value'>{home}</span>
-        <div className='stat-bar-track'>
-            <span className='stat-label'>{label}</span>
-            <div className='stat-bar' style={{ '--home': `${(home / (home + away)) * 100}%` }} />
-        </div>
-        <span className='stat-value stat-value-away'>{away}</span>
+function InProgress({ label }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-dash bg-dash-card p-5">
+      <p className="text-[13px] font-semibold text-secondary">{label} isn't available from the API yet.</p>
+      <p className="text-[12px] text-secondary">This section is in progress.</p>
     </div>
-)
-
-const MatchDetail = ({ title }) => {
-    const navigate = useNavigate()
-    const { apiMatchId } = useParams()
-    const [activeTab, setActiveTab] = useState('Overview')
-
-    document.title = title
-
-    useEffect(() => {
-        if (!localStorage.getItem('matchlens_user')) {
-            navigate('/')
-        }
-    }, [navigate])
-
-    return (
-        <div className='match-page'>
-            <Navigation />
-
-            <main className='match-main'>
-                <div className='match-breadcrumb'>
-                    Matches <span>&gt;</span> {matchInfo.homeTeam.name} vs {matchInfo.awayTeam.name}
-                </div>
-
-                <section className='match-hero-card'>
-                    <div className='winprob-bar'>
-                        <span className='winprob-home' style={{ width: `${matchInfo.winProbability.home}%` }}>
-                            WIN PROBABILITY {matchInfo.winProbability.home}%
-                        </span>
-                        <span className='winprob-away' style={{ width: `${matchInfo.winProbability.away}%` }}>
-                            {matchInfo.winProbability.away}% WIN PROBABILITY
-                        </span>
-                    </div>
-
-                    <div className='match-scoreboard'>
-                        <div className='match-team'>
-                            <div className='match-team-badge'>{matchInfo.homeTeam.badge}</div>
-                            <h2>{matchInfo.homeTeam.name}</h2>
-                            <span className='match-team-tag'>Home</span>
-                        </div>
-
-                        <div className='match-score-center'>
-                            {matchInfo.isLive && <span className='match-live-tag'>● LIVE {matchInfo.minute}</span>}
-                            <div className='match-score'>
-                                {matchInfo.homeTeam.score} <span>:</span> {matchInfo.awayTeam.score}
-                            </div>
-                            <span className='match-competition'>{matchInfo.competition}</span>
-                            <button type='button' className='match-wager-btn' disabled title='Coming soon'>
-                                PLACE WAGER
-                            </button>
-                        </div>
-
-                        <div className='match-team'>
-                            <div className='match-team-badge'>{matchInfo.awayTeam.badge}</div>
-                            <h2>{matchInfo.awayTeam.name}</h2>
-                            <span className='match-team-tag'>Away</span>
-                        </div>
-                    </div>
-                </section>
-
-                <nav className='match-tabs'>
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab}
-                            type='button'
-                            className={activeTab === tab ? 'match-tab active' : 'match-tab'}
-                            onClick={() => setActiveTab(tab)}
-                        >
-                            {tab.toUpperCase()}
-                        </button>
-                    ))}
-                </nav>
-
-                {activeTab === 'Overview' && (
-                    <>
-                        <div className='match-overview-grid'>
-                            <section className='match-card'>
-                                <h3>📋 Match Events</h3>
-                                <div className='events-list'>
-                                    {matchEvents.map((event, i) => (
-                                        <div key={i} className='event-row'>
-                                            <span className='event-minute'>{event.minute}'</span>
-                                            <div>
-                                                <div className='event-title'>
-                                                    {event.type === 'goal' ? '⚽' : '🟨'} {event.player}
-                                                </div>
-                                                <div className='event-note'>{event.note}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className='possession-card'>
-                                    <h3>Possession</h3>
-                                    <div className='possession-values'>
-                                        <span>{possession.home}%</span>
-                                        <span>{possession.away}%</span>
-                                    </div>
-                                    <div className='possession-bar'>
-                                        <span style={{ width: `${possession.home}%` }} />
-                                    </div>
-                                </div>
-                            </section>
-
-                            <section className='match-card'>
-                                <div className='lineup-header'>
-                                    <h3>Lineup Visualization</h3>
-                                    <span className='lineup-tag'>{lineupFormation}</span>
-                                </div>
-                                <div className='pitch'>
-                                    {lineup.map((player) => (
-                                        <div
-                                            key={player.number}
-                                            className='player-dot'
-                                            style={{ left: `${player.x}%`, top: `${player.y}%` }}
-                                        >
-                                            <span>{player.number}</span>
-                                            <small>{player.name}</small>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-
-                            <aside className='match-aside'>
-                                <section className='match-card'>
-                                    <h3>Key Stats</h3>
-                                    {keyStats.map((stat) => (
-                                        <StatBar key={stat.label} {...stat} />
-                                    ))}
-                                </section>
-
-                                <section className='match-card highlight-card'>
-                                    <div className='highlight-thumb'>▶</div>
-                                    <span className='highlight-tag'>{highlight.tag}</span>
-                                    <p>{highlight.title}</p>
-                                </section>
-                            </aside>
-                        </div>
-
-                        <MatchComments apiMatchId={apiMatchId} variant='chat' />
-                    </>
-                )}
-
-                {activeTab === 'Lineup' && (
-                    <section className='match-card match-placeholder'>
-                        Full lineup breakdown coming soon — this will use live data once the match API is integrated.
-                    </section>
-                )}
-
-                {activeTab === 'Stats' && (
-                    <section className='match-card match-placeholder'>
-                        Full stats breakdown coming soon — this will use live data once the match API is integrated.
-                    </section>
-                )}
-
-                {activeTab === 'Comments' && (
-                    <MatchComments apiMatchId={apiMatchId} variant='list' />
-                )}
-
-                {activeTab === 'Highlights' && (
-                    <section className='match-card match-placeholder'>
-                        Video highlights coming soon — this will use live data once the match API is integrated.
-                    </section>
-                )}
-            </main>
-        </div>
-    )
+  )
 }
 
-export default MatchDetail
+export default function MatchDetail() {
+  const { matchId } = useParams()
+  const [activeTab, setActiveTab] = useState('Overview')
+  const [match, setMatch] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setLoading(true)
+    setNotFound(false)
+    setError(null)
+    fetch(`${API_URL}/api/matches/${matchId}`)
+      .then((res) => {
+        if (res.status === 404) {
+          setNotFound(true)
+          return null
+        }
+        if (!res.ok) throw new Error('Failed to load match')
+        return res.json()
+      })
+      .then((data) => data && setMatch(data))
+      .catch((err) => {
+        console.error('Failed to load match', err)
+        setError('Could not load this match. Please try again.')
+      })
+      .finally(() => setLoading(false))
+  }, [matchId])
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p className="text-[13px] text-secondary">Loading match…</p>
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="flex flex-col items-start gap-3 p-6">
+        <p className="text-[16px] font-bold text-white">Match not found</p>
+        <p className="text-[13px] text-secondary">This match doesn't exist or may have been removed.</p>
+        <Link to="/matches" className="text-[13px] font-semibold text-primary">
+          ← Back to Matches
+        </Link>
+      </div>
+    )
+  }
+
+  if (error || !match) {
+    return (
+      <div className="p-6">
+        <p className="text-[13px] text-dash-live">{error ?? 'Something went wrong.'}</p>
+      </div>
+    )
+  }
+
+  const isLiveOrHt = match.status === 'LIVE' || match.status === 'HT'
+
+  return (
+    <div className="flex gap-6 p-6">
+      <div className="flex flex-1 flex-col gap-6">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-2xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
+          <div className="relative flex flex-col gap-5 p-6">
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold text-secondary">{formatDate(match.date)} • {match.venue}</p>
+              {isLiveOrHt && (
+                <span className="rounded border border-primary bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+                  {match.status === 'HT' ? 'HALF-TIME' : `LIVE ${match.minute}'`}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-between px-10">
+              <div className="flex w-[180px] items-center gap-3">
+                <p className="truncate text-[22px] font-extrabold text-white">{match.home}</p>
+                <Crest compact label={match.home} className="size-4 rounded-full" />
+              </div>
+              <div className="shrink-0 rounded-lg bg-dash-sidebar px-4 py-1.5">
+                <p className="text-[32px] font-extrabold text-primary">
+                  {match.home_score ?? '–'} - {match.away_score ?? '–'}
+                </p>
+              </div>
+              <div className="flex w-[180px] items-center justify-end gap-3">
+                <Crest compact label={match.away} className="size-4 rounded-full" />
+                <p className="truncate text-[22px] font-extrabold text-white">{match.away}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-6 border-b border-dash">
+          {TABS.map((tab) => {
+            const isActive = tab === activeTab
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className="flex flex-col items-center gap-1.5 pb-2"
+              >
+                <span className={`text-[14px] ${isActive ? 'font-bold text-primary' : 'font-medium text-secondary'}`}>
+                  {tab}
+                </span>
+                <span className={`h-[3px] w-10 rounded-full ${isActive ? 'bg-primary' : 'bg-transparent'}`} />
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Tab content */}
+        {activeTab === 'Overview' && <InProgress label="Key match events" />}
+        {activeTab === 'Lineup' && <InProgress label="Tactical formations and lineups" />}
+        {activeTab === 'Stats' && <InProgress label="Match statistics and possession" />}
+        {activeTab === 'Comments' && <MatchComments apiMatchId={matchId} />}
+        {activeTab === 'Highlights' && <VideoPlayer title={`${match.home} vs ${match.away} — Highlights`} />}
+      </div>
+
+      {/* Right sidebar */}
+      <aside className="flex w-[300px] shrink-0 flex-col gap-5">
+        <div className="flex flex-col gap-3 rounded-2xl border border-dash bg-dash-card p-4">
+          <p className="text-[16px] font-bold text-white">💬 Live Fan Chat</p>
+          <p className="text-[12px] text-secondary">Live chat isn't available from the API yet — in progress.</p>
+        </div>
+
+        <button
+          type="button"
+          disabled
+          title="Predictions aren't available yet"
+          className="flex cursor-not-allowed items-center justify-center rounded-lg bg-dash-neutral p-3.5 text-[13px] font-bold text-secondary"
+        >
+          PLACE WAGER — COMING SOON
+        </button>
+      </aside>
+    </div>
+  )
+}
