@@ -2,6 +2,7 @@ import express from 'express'
 import path from 'path'
 import dotenv from 'dotenv'
 import userRouter from './routes/userRoutes.js'
+import commentRouter from './routes/commentRoutes.js'
 
 dotenv.config({ path: '../.env' })
 
@@ -16,6 +17,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use('/api/users', userRouter)
+app.use('/api/comments', commentRouter)
 
 if (process.env.NODE_ENV === 'production') {
     app.get('/*', (_, res) =>

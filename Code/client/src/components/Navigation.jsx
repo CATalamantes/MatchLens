@@ -23,7 +23,7 @@ const Navigation = () => {
                     <Link to='/home' className='ml-logo'>MatchLens</Link>
                     <ul className='ml-nav-links'>
                         <li><Link to='/home' className='active'>Home</Link></li>
-                        <li><a href='#' onClick={(e) => e.preventDefault()}>Matches</a></li>
+                        <li><Link to='/matches/demo-match-1'>Matches</Link></li>
                         <li><a href='#' onClick={(e) => e.preventDefault()}>Players &amp; Teams</a></li>
                         <li><a href='#' onClick={(e) => e.preventDefault()}>Fan Leaderboard</a></li>
                     </ul>

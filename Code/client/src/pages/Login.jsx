@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { validateLogin } from '../utilities/validateLogin'
+import AuthAPI from '../services/AuthAPI'
 import '../css/Login.css'
 
 const Login = ({ title }) => {
@@ -11,7 +12,7 @@ const Login = ({ title }) => {
 
     document.title = title
 
-    const handleSignIn = (event) => {
+    const handleSignIn = async (event) => {
         event.preventDefault()
 
         const validationError = validateLogin(email, password)
@@ -20,9 +21,13 @@ const Login = ({ title }) => {
             return
         }
 
-        // Auto-login: real-looking email + password gets you in.
-        localStorage.setItem('matchlens_user', JSON.stringify({ email }))
-        navigate('/home')
+        try {
+            const user = await AuthAPI.login(email, password)
+            localStorage.setItem('matchlens_user', JSON.stringify(user))
+            navigate('/home')
+        } catch (err) {
+            setError(err.message)
+        }
     }
 
     return (

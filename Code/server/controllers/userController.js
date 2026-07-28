@@ -13,14 +13,22 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body
 
-        // Auto-login: any well-formed email + non-empty password succeeds.
-        // (Database hookup intentionally skipped for now.)
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailPattern.test(email) || !password) {
+        if (!email || !password) {
             return res.status(401).json({ error: 'Invalid email or password' })
         }
 
-        res.status(200).json({ email, points: 24580 })
+        const results = await pool.query(
+            'SELECT id, email, password, favorite_team, points FROM users WHERE email = $1',
+            [email]
+        )
+
+        const user = results.rows[0]
+        if (!user || user.password !== password) {
+            return res.status(401).json({ error: 'Invalid email or password' })
+        }
+
+        const { password: _password, ...safeUser } = user
+        res.status(200).json(safeUser)
     } catch (error) {
         res.status(409).json({ error: error.message })
     }
