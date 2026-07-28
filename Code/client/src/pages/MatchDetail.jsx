@@ -1,33 +1,26 @@
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import ProbabilityBar from '../components/ProbabilityBar'
-import StatBar from '../components/StatBar'
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import VideoPlayer from '../components/VideoPlayer'
 import CommentThread from '../components/CommentThread'
-import { getMockMatchDetail } from '../mocks/matchDetail'
+
+const API_URL = import.meta.env.VITE_API_URL ?? ''
 
 const TABS = ['Overview', 'Lineup', 'Stats', 'Comments', 'Highlights']
 
-const mockChatMessages = [
-  { id: 1, author: 'MessiFanatic', time: '19:42', text: 'Argentina are running rings around them today!' },
-  { id: 2, author: 'LesBleusForever', time: '19:44', text: "Don't count us out, Mbappé is on fire" },
-  { id: 3, author: 'AlbicelesteArmy', time: '19:45', text: "Scaloni's tactics are world class, securing slip and slide" },
-]
-
-function eventIcon(type) {
-  if (type === 'goal') return '⚽'
-  if (type === 'yellow_card') return '🟨'
-  return '🟥'
+function formatDate(dateString) {
+  return new Date(dateString).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
 }
 
-function PitchDot({ name, x, y, isHome }) {
+function InProgress({ label }) {
   return (
-    <div
-      className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
-      style={{ left: `${x}%`, top: `${y}%` }}
-    >
-      <div className={`size-4 rounded-full ${isHome ? 'bg-dash-live' : 'bg-dash-away'}`} />
-      <p className="whitespace-nowrap text-[8px] text-white">{name}</p>
+    <div className="flex flex-col gap-2 rounded-2xl border border-dash bg-dash-card p-5">
+      <p className="text-[13px] font-semibold text-secondary">{label} isn't available from the API yet.</p>
+      <p className="text-[12px] text-secondary">This section is in progress.</p>
     </div>
   )
 }
@@ -35,7 +28,61 @@ function PitchDot({ name, x, y, isHome }) {
 export default function MatchDetail() {
   const { matchId } = useParams()
   const [activeTab, setActiveTab] = useState('Overview')
-  const match = getMockMatchDetail(matchId)
+  const [match, setMatch] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setLoading(true)
+    setNotFound(false)
+    setError(null)
+    fetch(`${API_URL}/api/matches/${matchId}`)
+      .then((res) => {
+        if (res.status === 404) {
+          setNotFound(true)
+          return null
+        }
+        if (!res.ok) throw new Error('Failed to load match')
+        return res.json()
+      })
+      .then((data) => data && setMatch(data))
+      .catch((err) => {
+        console.error('Failed to load match', err)
+        setError('Could not load this match. Please try again.')
+      })
+      .finally(() => setLoading(false))
+  }, [matchId])
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <p className="text-[13px] text-secondary">Loading match…</p>
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="flex flex-col items-start gap-3 p-6">
+        <p className="text-[16px] font-bold text-white">Match not found</p>
+        <p className="text-[13px] text-secondary">This match doesn't exist or may have been removed.</p>
+        <Link to="/matches" className="text-[13px] font-semibold text-primary">
+          ← Back to Matches
+        </Link>
+      </div>
+    )
+  }
+
+  if (error || !match) {
+    return (
+      <div className="p-6">
+        <p className="text-[13px] text-dash-live">{error ?? 'Something went wrong.'}</p>
+      </div>
+    )
+  }
+
+  const isLiveOrHt = match.status === 'LIVE' || match.status === 'HT'
 
   return (
     <div className="flex gap-6 p-6">
@@ -45,29 +92,28 @@ export default function MatchDetail() {
           <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
           <div className="relative flex flex-col gap-5 p-6">
             <div className="flex items-center justify-between">
-              <p className="text-[12px] font-semibold text-secondary">{match.competition}</p>
-              {match.status === 'LIVE' && (
+              <p className="text-[12px] font-semibold text-secondary">{formatDate(match.date)} • {match.venue}</p>
+              {isLiveOrHt && (
                 <span className="rounded border border-primary bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
-                  LIVE {match.minute}'
+                  {match.status === 'HT' ? 'HALF-TIME' : `LIVE ${match.minute}'`}
                 </span>
               )}
             </div>
             <div className="flex items-center justify-between px-10">
               <div className="flex w-[180px] items-center gap-3">
                 <p className="truncate text-[22px] font-extrabold text-white">{match.home}</p>
-                <span className="size-4 shrink-0 rounded-full bg-dash-live" />
+                <span className="size-4 shrink-0 rounded-full bg-white/10" />
               </div>
               <div className="shrink-0 rounded-lg bg-dash-sidebar px-4 py-1.5">
                 <p className="text-[32px] font-extrabold text-primary">
-                  {match.home_score} - {match.away_score}
+                  {match.home_score ?? '–'} - {match.away_score ?? '–'}
                 </p>
               </div>
               <div className="flex w-[180px] items-center justify-end gap-3">
-                <span className="size-4 shrink-0 rounded-full bg-dash-away" />
+                <span className="size-4 shrink-0 rounded-full bg-white/10" />
                 <p className="truncate text-[22px] font-extrabold text-white">{match.away}</p>
               </div>
             </div>
-            <ProbabilityBar {...match.probability} />
           </div>
         </div>
 
@@ -92,109 +138,27 @@ export default function MatchDetail() {
         </div>
 
         {/* Tab content */}
-        {activeTab === 'Overview' && (
-          <div className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-            <p className="text-[16px] font-bold text-white">⚡ Key Match Events</p>
-            <div className="flex flex-col gap-3">
-              {match.events.map((event) => (
-                <div
-                  key={`${event.minute}-${event.type}`}
-                  className="flex items-center gap-3 rounded-lg border border-dash bg-dash-sidebar p-3"
-                >
-                  <p className="w-8 shrink-0 text-[12px] font-bold text-primary">{event.minute}'</p>
-                  <span className="text-[14px]">{eventIcon(event.type)}</span>
-                  <p className="text-[12px] text-white">{event.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'Lineup' && (
-          <div className="flex gap-6 rounded-2xl border border-dash bg-dash-card p-5">
-            <div className="flex w-64 shrink-0 flex-col gap-4">
-              <p className="text-[16px] font-bold text-white">📋 Live Tactical Formations</p>
-              <p className="text-[13px] text-white">
-                {match.home}: {match.lineups.home.formation}
-              </p>
-              <p className="text-[13px] text-white">
-                {match.away}: {match.lineups.away.formation}
-              </p>
-            </div>
-            <div className="relative aspect-[340/200] flex-1 overflow-hidden rounded-lg border border-primary/20 bg-primary/5">
-              <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-primary/20" />
-              <div className="absolute left-1/2 top-1/2 size-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/20" />
-              {match.lineups.home.players.map((player) => (
-                <PitchDot key={player.name} {...player} isHome />
-              ))}
-              {match.lineups.away.players.map((player) => (
-                <PitchDot key={player.name} {...player} isHome={false} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'Stats' && (
-          <div className="flex gap-4">
-            <div className="flex flex-1 flex-col gap-5 rounded-2xl border border-dash bg-dash-card p-5">
-              <p className="text-[16px] font-bold text-white">📊 Live Match Statistics</p>
-              {match.stats.map((stat) => (
-                <StatBar key={stat.label} {...stat} />
-              ))}
-            </div>
-            <div className="flex w-[300px] shrink-0 flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-              <p className="text-[16px] font-bold text-white">⚽ Ball Possession</p>
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex items-center gap-3">
-                  <p className="text-[28px] font-extrabold text-dash-live">{match.possession.home}%</p>
-                  <p className="text-[16px] text-secondary">vs</p>
-                  <p className="text-[28px] font-extrabold text-dash-away">{match.possession.away}%</p>
-                </div>
-                <div className="flex h-2 w-full overflow-hidden rounded-full">
-                  <div className="h-full bg-dash-live" style={{ width: `${match.possession.home}%` }} />
-                  <div className="h-full bg-dash-away" style={{ width: `${match.possession.away}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {activeTab === 'Overview' && <InProgress label="Key match events" />}
+        {activeTab === 'Lineup' && <InProgress label="Tactical formations and lineups" />}
+        {activeTab === 'Stats' && <InProgress label="Match statistics and possession" />}
         {activeTab === 'Comments' && <CommentThread />}
-
         {activeTab === 'Highlights' && <VideoPlayer title={`${match.home} vs ${match.away} — Highlights`} />}
       </div>
 
       {/* Right sidebar */}
       <aside className="flex w-[300px] shrink-0 flex-col gap-5">
         <div className="flex flex-col gap-3 rounded-2xl border border-dash bg-dash-card p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[16px] font-bold text-white">💬 Live Fan Chat</p>
-            <p className="text-[11px] font-semibold text-primary">1,247 online</p>
-          </div>
-          <div className="flex flex-col gap-3">
-            {mockChatMessages.map((message) => (
-              <div key={message.id} className="flex gap-2">
-                <div className="size-6 shrink-0 rounded-full bg-white/10" />
-                <div className="flex flex-1 flex-col gap-0.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-bold text-white">{message.author}</p>
-                    <p className="text-[9px] text-secondary">{message.time}</p>
-                  </div>
-                  <p className="text-[11px] text-secondary">{message.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="rounded-lg bg-dash-sidebar p-2.5">
-            <p className="text-[12px] text-secondary">Send message...</p>
-          </div>
+          <p className="text-[16px] font-bold text-white">💬 Live Fan Chat</p>
+          <p className="text-[12px] text-secondary">Live chat isn't available from the API yet — in progress.</p>
         </div>
 
         <button
           type="button"
-          className="flex items-center justify-center rounded-lg bg-primary p-3.5 text-[13px] font-bold text-black"
+          disabled
+          title="Predictions aren't available yet"
+          className="flex cursor-not-allowed items-center justify-center rounded-lg bg-dash-neutral p-3.5 text-[13px] font-bold text-secondary"
         >
-          PLACE WAGER
+          PLACE WAGER — COMING SOON
         </button>
       </aside>
     </div>
