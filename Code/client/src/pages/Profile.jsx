@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
+import { useSessionUser } from '../hooks/useSessionUser'
 import { teams as followableTeams } from '../mocks/teams'
-
-// No login/session exists yet — stand-in for "the logged-in user" until
-// real auth lands. Every real API call on this page targets this id.
-const DEMO_USER_ID = 1
+import Avatar from '../components/Avatar'
+import Crest from '../components/Crest'
+import Skeleton from '../components/Skeleton'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
-const BIO_STORAGE_KEY = `matchlens:bio:${DEMO_USER_ID}`
 const DEFAULT_BIO = 'Tactical obsession. Data-driven insights. World Cup 2026 prediction specialist.'
 
 // Decorative only — no transactions table or trend data exists anywhere
@@ -32,7 +31,7 @@ function ToggleSwitch({ checked, onChange }) {
     <button
       type="button"
       onClick={onChange}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-dash-mlx' : 'bg-dash-input'}`}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-dash-input'}`}
     >
       <span
         className={`absolute top-0.5 size-4 rounded-full bg-white transition-transform ${
@@ -44,8 +43,15 @@ function ToggleSwitch({ checked, onChange }) {
 }
 
 export default function Profile() {
+  const sessionUser = useSessionUser()
+  const userId = sessionUser?.id
+
   const [user, setUser] = useState(null)
+  const [loadingUser, setLoadingUser] = useState(true)
+  const [userError, setUserError] = useState(null)
   const [followedTeams, setFollowedTeams] = useState([])
+  const [loadingFollows, setLoadingFollows] = useState(true)
+  const [followsLoadError, setFollowsLoadError] = useState(null)
   const [followError, setFollowError] = useState(null)
   const [showTeamPicker, setShowTeamPicker] = useState(false)
 
@@ -53,7 +59,7 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
-  const [bio, setBio] = useState(() => localStorage.getItem(BIO_STORAGE_KEY) ?? DEFAULT_BIO)
+  const [bio, setBio] = useState(() => localStorage.getItem(`matchlens:bio:${userId}`) ?? DEFAULT_BIO)
   const [bioDraft, setBioDraft] = useState(bio)
 
   const [notifPrefs, setNotifPrefs] = useState({
@@ -70,16 +76,39 @@ export default function Profile() {
   })
 
   useEffect(() => {
-    fetch(`${API_URL}/api/users/${DEMO_USER_ID}`)
-      .then((res) => res.json())
-      .then(setUser)
-      .catch((err) => console.error('Failed to load user', err))
+    if (!userId) return
 
-    fetch(`${API_URL}/api/follows/user/${DEMO_USER_ID}`)
-      .then((res) => res.json())
+    setLoadingUser(true)
+    setUserError(null)
+    fetch(`${API_URL}/api/users/${userId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load user')
+        return res.json()
+      })
+      .then((data) => {
+        setUser(data)
+        setAvatarUrl(data.profile_image_url)
+      })
+      .catch((err) => {
+        console.error('Failed to load user', err)
+        setUserError('Could not load your profile.')
+      })
+      .finally(() => setLoadingUser(false))
+
+    setLoadingFollows(true)
+    setFollowsLoadError(null)
+    fetch(`${API_URL}/api/follows/user/${userId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load followed teams')
+        return res.json()
+      })
       .then(setFollowedTeams)
-      .catch((err) => console.error('Failed to load followed teams', err))
-  }, [])
+      .catch((err) => {
+        console.error('Failed to load followed teams', err)
+        setFollowsLoadError('Could not load followed teams.')
+      })
+      .finally(() => setLoadingFollows(false))
+  }, [userId])
 
   async function handleAvatarChange(event) {
     const file = event.target.files?.[0]
@@ -105,17 +134,20 @@ export default function Profile() {
       )
       if (!uploadRes.ok) throw new Error('Cloudinary upload failed')
       const uploadData = await uploadRes.json()
-
-      // getUserById/updateUser never return profile_image_url (see plan
-      // notes) — use the URL Cloudinary gave us directly instead of
-      // trying to re-fetch it from the API.
       setAvatarUrl(uploadData.secure_url)
 
-      await fetch(`${API_URL}/api/users/${DEMO_USER_ID}`, {
+      const patchRes = await fetch(`${API_URL}/api/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile_image_url: uploadData.secure_url }),
       })
+      if (!patchRes.ok) throw new Error('Failed to save avatar')
+      const updatedUser = await patchRes.json()
+      setUser(updatedUser)
+
+      // Keep the Sidebar's avatar (read from this hint) in sync without
+      // waiting for the next full session check.
+      localStorage.setItem('matchlens_user', JSON.stringify({ ...sessionUser, ...updatedUser }))
     } catch (err) {
       setUploadError('Upload failed. Please try again.')
     } finally {
@@ -125,7 +157,7 @@ export default function Profile() {
 
   function handleSaveBio() {
     setBio(bioDraft)
-    localStorage.setItem(BIO_STORAGE_KEY, bioDraft)
+    localStorage.setItem(`matchlens:bio:${userId}`, bioDraft)
     setIsEditingProfile(false)
   }
 
@@ -135,7 +167,7 @@ export default function Profile() {
       const res = await fetch(`${API_URL}/api/follows`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: DEMO_USER_ID, api_team_id: team.api_team_id, team_name: team.name }),
+        body: JSON.stringify({ user_id: userId, api_team_id: team.api_team_id, team_name: team.name }),
       })
       if (!res.ok) throw new Error('Follow failed')
       const created = await res.json()
@@ -175,16 +207,25 @@ export default function Profile() {
           {/* Profile header */}
           <div className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div
-                  className="size-16 shrink-0 rounded-full bg-white/10 bg-cover bg-center"
-                  style={avatarUrl ? { backgroundImage: `url(${avatarUrl})` } : undefined}
-                />
-                <div className="flex flex-col gap-1">
-                  <p className="text-[18px] font-bold text-white">{user?.username ?? 'Loading…'}</p>
-                  <p className="text-[13px] text-secondary">@{user?.username ?? '...'}</p>
+              {loadingUser ? (
+                <div className="flex items-center gap-4">
+                  <Skeleton className="size-16 shrink-0 rounded-full" />
+                  <div className="flex flex-col gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
                 </div>
-              </div>
+              ) : userError ? (
+                <p className="text-[13px] text-dash-live">{userError}</p>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <Avatar name={user?.username} src={avatarUrl} className="size-16 shrink-0 rounded-full" />
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[18px] font-bold text-white">{user?.username}</p>
+                    <p className="text-[13px] text-secondary">@{user?.username}</p>
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setIsEditingProfile((prev) => !prev)}
@@ -233,11 +274,15 @@ export default function Profile() {
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
                 <p className="text-[12px] font-semibold text-secondary">Points Balance</p>
-                <p className="text-[28px] font-extrabold text-dash-mlx">
-                  {(user?.points ?? 0).toLocaleString()}
-                </p>
+                {loadingUser ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <p className="text-[28px] font-extrabold text-primary">
+                    {(user?.points ?? 0).toLocaleString()}
+                  </p>
+                )}
               </div>
-              <span className="rounded-lg bg-dash-mlx px-4 py-2 text-[12px] font-bold uppercase text-dash-sidebar">
+              <span className="rounded-lg bg-primary px-4 py-2 text-[12px] font-bold uppercase text-dash-sidebar">
                 Top Up Balance
               </span>
             </div>
@@ -248,7 +293,7 @@ export default function Profile() {
               </div>
               <div className="flex h-10 items-end gap-1.5">
                 {balanceTrend.map((height, index) => (
-                  <div key={index} className="flex-1 rounded-t bg-dash-mlx/40" style={{ height: `${height}%` }} />
+                  <div key={index} className="flex-1 rounded-t bg-primary/40" style={{ height: `${height}%` }} />
                 ))}
               </div>
             </div>
@@ -258,7 +303,7 @@ export default function Profile() {
               {recentTransactions.map((tx) => (
                 <div key={tx.label} className="flex items-center justify-between text-[13px]">
                   <p className="text-white">{tx.label}</p>
-                  <p className={tx.positive ? 'text-dash-mlx' : 'text-dash-live'}>{tx.amount}</p>
+                  <p className={tx.positive ? 'text-primary' : 'text-dash-live'}>{tx.amount}</p>
                 </div>
               ))}
             </div>
@@ -269,22 +314,34 @@ export default function Profile() {
             <p className="text-[18px] font-bold text-white">Followed Teams</p>
             {followError && <p className="text-[12px] text-dash-live">{followError}</p>}
             <div className="flex flex-col gap-3">
-              {followedTeams.map((team) => (
-                <div key={team.followed_team_id} className="flex items-center justify-between border-b border-dash pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="size-6 shrink-0 rounded bg-white/10" />
-                    <p className="text-[14px] font-bold text-white">{team.team_name}</p>
+              {loadingFollows &&
+                [0, 1].map((i) => (
+                  <div key={i} className="flex items-center gap-3 border-b border-dash pb-3">
+                    <Skeleton className="size-6 shrink-0 rounded" />
+                    <Skeleton className="h-4 w-32" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleUnfollowTeam(team.followed_team_id)}
-                    className="text-[12px] font-semibold text-dash-live"
-                  >
-                    Unfollow
-                  </button>
-                </div>
-              ))}
-              {followedTeams.length === 0 && (
+                ))}
+              {!loadingFollows && followsLoadError && (
+                <p className="text-[13px] text-dash-live">{followsLoadError}</p>
+              )}
+              {!loadingFollows &&
+                !followsLoadError &&
+                followedTeams.map((team) => (
+                  <div key={team.followed_team_id} className="flex items-center justify-between border-b border-dash pb-3">
+                    <div className="flex items-center gap-3">
+                      <Crest compact label={team.team_name} className="size-6 rounded" />
+                      <p className="text-[14px] font-bold text-white">{team.team_name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleUnfollowTeam(team.followed_team_id)}
+                      className="text-[12px] font-semibold text-dash-live"
+                    >
+                      Unfollow
+                    </button>
+                  </div>
+                ))}
+              {!loadingFollows && !followsLoadError && followedTeams.length === 0 && (
                 <p className="text-[13px] text-secondary">Not following any teams yet.</p>
               )}
             </div>

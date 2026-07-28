@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import PlayerCard from '../components/PlayerCard'
+import Crest from '../components/Crest'
 import { getMockTeamDetail } from '../mocks/teamDetail'
 
 export default function TeamDetail() {
@@ -16,7 +17,7 @@ export default function TeamDetail() {
           <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
           <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
             <div className="flex items-center gap-5">
-              <div className="size-20 shrink-0 rounded-full bg-white/10" />
+              <Crest label={team.name} className="size-20 rounded-full" textClassName="text-[26px]" />
               <div className="flex flex-col gap-1.5">
                 <p className="text-[28px] font-extrabold text-white">{team.name}</p>
                 <p className="text-[11px] font-bold text-primary">{team.tagline}</p>
@@ -86,11 +87,11 @@ export default function TeamDetail() {
                 <div className="flex flex-1 items-center gap-3">
                   <div className="flex flex-1 items-center justify-end gap-1.5">
                     <p className="truncate text-[13px] font-semibold text-white">{fixture.homeTeam}</p>
-                    <div className="size-4 shrink-0 rounded-sm bg-white/10" />
+                    <Crest compact label={fixture.homeTeam} className="size-4 rounded-sm" />
                   </div>
                   <p className="shrink-0 text-[11px] font-bold text-secondary">vs</p>
                   <div className="flex flex-1 items-center gap-1.5">
-                    <div className="size-4 shrink-0 rounded-sm bg-white/10" />
+                    <Crest compact label={fixture.awayTeam} className="size-4 rounded-sm" />
                     <p className="truncate text-[13px] font-semibold text-white">{fixture.awayTeam}</p>
                   </div>
                 </div>

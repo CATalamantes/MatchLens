@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Crest from './Crest'
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('en-GB', {
@@ -25,7 +26,7 @@ export default function MatchCard({ match }) {
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <div className="size-4 shrink-0 rounded-sm bg-white/10" />
+          <Crest compact label={home} className="size-4 rounded-sm" />
           <p className="flex-1 truncate text-[12px] font-semibold text-white">{home}</p>
         </div>
         <div className="flex w-full items-center justify-center rounded-md bg-dash-sidebar px-2 py-1">
@@ -34,7 +35,7 @@ export default function MatchCard({ match }) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="size-4 shrink-0 rounded-sm bg-white/10" />
+          <Crest compact label={away} className="size-4 rounded-sm" />
           <p className="flex-1 truncate text-[12px] font-semibold text-white">{away}</p>
         </div>
       </div>

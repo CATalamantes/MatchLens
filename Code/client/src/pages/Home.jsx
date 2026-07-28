@@ -4,16 +4,15 @@ import MatchCard from '../components/MatchCard'
 import PlayerCard from '../components/PlayerCard'
 import StandingsTable from '../components/StandingsTable'
 import StatBar from '../components/StatBar'
+import Crest from '../components/Crest'
+import Skeleton from '../components/Skeleton'
+import { useSessionUser } from '../hooks/useSessionUser'
 import { knockoutBracket, matchStatistics } from '../mocks/dashboardMocks'
 
 // Falls back to a relative path (same-origin) when unset, so requests
 // still work via the Vite proxy in dev and the Express static server in
 // prod without ever hardcoding a host.
 const API_URL = import.meta.env.VITE_API_URL ?? ''
-
-// No login/session exists yet — stand-in for "the logged-in user" until
-// real auth lands, same placeholder used on the Profile page.
-const DEMO_USER_ID = 1
 
 function getCountdown(dateString, now) {
   const diff = Math.max(0, new Date(dateString).getTime() - now)
@@ -47,34 +46,59 @@ function BracketMatch({ home, away, highlight }) {
   )
 }
 
+async function fetchJson(url) {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Request to ${url} failed`)
+  return res.json()
+}
+
 export default function Home() {
+  const sessionUser = useSessionUser()
   const [matches, setMatches] = useState([])
   const [teams, setTeams] = useState([])
   const [topScorers, setTopScorers] = useState([])
   const [user, setUser] = useState(null)
   const [now, setNow] = useState(Date.now())
 
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   useEffect(() => {
-    fetch(`${API_URL}/api/matches`)
-      .then((res) => res.json())
-      .then(setMatches)
-      .catch((err) => console.error('Failed to load matches', err))
+    let cancelled = false
+    setLoading(true)
+    setError(null)
 
-    fetch(`${API_URL}/api/teams`)
-      .then((res) => res.json())
-      .then(setTeams)
-      .catch((err) => console.error('Failed to load teams', err))
+    Promise.all([
+      fetchJson(`${API_URL}/api/matches`),
+      fetchJson(`${API_URL}/api/teams`),
+      fetchJson(`${API_URL}/api/players?sort=goals`),
+    ])
+      .then(([matchesData, teamsData, playersData]) => {
+        if (cancelled) return
+        setMatches(matchesData)
+        setTeams(teamsData)
+        setTopScorers(playersData.slice(0, 3))
+      })
+      .catch((err) => {
+        if (cancelled) return
+        console.error('Failed to load dashboard data', err)
+        setError('Could not load dashboard data. Please try again.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
-    fetch(`${API_URL}/api/players?sort=goals`)
-      .then((res) => res.json())
-      .then((players) => setTopScorers(players.slice(0, 3)))
-      .catch((err) => console.error('Failed to load players', err))
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-    fetch(`${API_URL}/api/users/${DEMO_USER_ID}`)
-      .then((res) => res.json())
+  useEffect(() => {
+    if (!sessionUser?.id) return
+    fetchJson(`${API_URL}/api/users/${sessionUser.id}`)
       .then(setUser)
       .catch((err) => console.error('Failed to load user', err))
-  }, [])
+  }, [sessionUser?.id])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000)
@@ -82,52 +106,64 @@ export default function Home() {
   }, [])
 
   const upcomingMatch = matches.find((m) => m.status === 'UPCOMING')
-  const liveMatch = matches.find((m) => m.status === 'LIVE')
+  const liveMatch = matches.find((m) => m.status === 'LIVE' || m.status === 'HT')
   const countdown = upcomingMatch ? getCountdown(upcomingMatch.date, now) : null
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <p className="text-[13px] text-dash-live">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex gap-6 p-6">
       <div className="flex flex-1 flex-col gap-6">
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
-          <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
-            <div className="flex max-w-[400px] flex-col gap-2">
-              <span className="inline-flex w-fit items-center rounded bg-dash-live px-2 py-1 text-[10px] font-bold text-white">
-                {upcomingMatch ? 'UPCOMING MAJOR' : 'NO UPCOMING MATCH'}
-              </span>
-              {upcomingMatch ? (
-                <>
-                  <h1 className="text-[24px] font-extrabold text-white">
-                    {upcomingMatch.home} vs {upcomingMatch.away}
-                  </h1>
-                  <p className="text-[13px] text-primary">
-                    {new Date(upcomingMatch.date).toLocaleDateString('en-GB', {
-                      weekday: 'long',
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                    })}{' '}
-                    • {upcomingMatch.venue}
-                  </p>
-                </>
-              ) : (
-                <p className="text-[13px] text-secondary">Check back soon for the next fixture.</p>
+        {loading ? (
+          <Skeleton className="h-[136px] w-full rounded-2xl" />
+        ) : (
+          <div className="relative overflow-hidden rounded-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
+            <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
+              <div className="flex max-w-[400px] flex-col gap-2">
+                <span className="inline-flex w-fit items-center rounded bg-dash-live px-2 py-1 text-[10px] font-bold text-white">
+                  {upcomingMatch ? 'UPCOMING MAJOR' : 'NO UPCOMING MATCH'}
+                </span>
+                {upcomingMatch ? (
+                  <>
+                    <h1 className="text-[24px] font-extrabold text-white">
+                      {upcomingMatch.home} vs {upcomingMatch.away}
+                    </h1>
+                    <p className="text-[13px] text-primary">
+                      {new Date(upcomingMatch.date).toLocaleDateString('en-GB', {
+                        weekday: 'long',
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}{' '}
+                      • {upcomingMatch.venue}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[13px] text-secondary">Check back soon for the next fixture.</p>
+                )}
+              </div>
+              {upcomingMatch && countdown && (
+                <div className="flex items-center gap-3 rounded-xl bg-black/30 p-3">
+                  <TimeUnit value={countdown.days} label="Days" />
+                  <span className="text-[14px] text-secondary">:</span>
+                  <TimeUnit value={countdown.hours} label="Hours" />
+                  <span className="text-[14px] text-secondary">:</span>
+                  <TimeUnit value={countdown.minutes} label="Min" />
+                  <span className="text-[14px] text-secondary">:</span>
+                  <TimeUnit value={countdown.seconds} label="Sec" />
+                </div>
               )}
             </div>
-            {upcomingMatch && countdown && (
-              <div className="flex items-center gap-3 rounded-xl bg-black/30 p-3">
-                <TimeUnit value={countdown.days} label="Days" />
-                <span className="text-[14px] text-secondary">:</span>
-                <TimeUnit value={countdown.hours} label="Hours" />
-                <span className="text-[14px] text-secondary">:</span>
-                <TimeUnit value={countdown.minutes} label="Min" />
-                <span className="text-[14px] text-secondary">:</span>
-                <TimeUnit value={countdown.seconds} label="Sec" />
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Match ticker */}
         <section className="flex flex-col gap-4">
@@ -140,11 +176,21 @@ export default function Home() {
             </div>
             <p className="text-[11px] font-bold text-primary">SEE ALL</p>
           </div>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {matches.map((match) => (
-              <MatchCard key={match.id} match={match} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-[124px] w-full rounded-xl" />
+              ))}
+            </div>
+          ) : matches.length === 0 ? (
+            <p className="text-[13px] text-secondary">No matches scheduled right now.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {matches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Knockout bracket */}
@@ -183,17 +229,37 @@ export default function Home() {
             <h2 className="text-[16px] font-bold text-white">🔥 Standings</h2>
             <p className="text-[12px] font-semibold text-secondary">MATCHDAY 24</p>
           </div>
-          <StandingsTable teams={teams} />
+          {loading ? (
+            <div className="flex flex-col gap-2">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : teams.length === 0 ? (
+            <p className="text-[13px] text-secondary">No standings available right now.</p>
+          ) : (
+            <StandingsTable teams={teams} />
+          )}
         </section>
 
         {/* Top scorers */}
         <section className="flex flex-col gap-4">
           <h2 className="text-[16px] font-bold text-white">⚽ Top Scorers</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {topScorers.map((player) => (
-              <PlayerCard key={player.id} player={player} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-[220px] w-full rounded-xl" />
+              ))}
+            </div>
+          ) : topScorers.length === 0 ? (
+            <p className="text-[13px] text-secondary">No player stats available right now.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {topScorers.map((player) => (
+                <PlayerCard key={player.id} player={player} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
@@ -204,14 +270,20 @@ export default function Home() {
             <span className="size-2 shrink-0 rounded-full bg-dash-live" />
             <p className="text-[14px] font-bold text-white">Live Match</p>
           </div>
-          {liveMatch && <p className="text-[12px] font-semibold text-primary">{liveMatch.minute}'</p>}
+          {liveMatch && (
+            <p className="text-[12px] font-semibold text-primary">
+              {liveMatch.status === 'HT' ? 'HT' : `${liveMatch.minute}'`}
+            </p>
+          )}
         </div>
 
-        {liveMatch ? (
+        {loading ? (
+          <Skeleton className="h-[92px] w-full rounded-xl" />
+        ) : liveMatch ? (
           <>
             <div className="flex items-center justify-center gap-4 rounded-xl border border-dash bg-dashboard p-3">
               <div className="flex flex-col items-center gap-1.5">
-                <div className="size-9 rounded-full bg-white/10" />
+                <Crest label={liveMatch.home} className="size-9 rounded-full" textClassName="text-[11px]" />
                 <p className="text-[11px] font-semibold text-white">{liveMatch.home}</p>
               </div>
               <div className="flex flex-col items-center">
@@ -221,7 +293,7 @@ export default function Home() {
                 <p className="text-[10px] text-secondary">{liveMatch.venue}</p>
               </div>
               <div className="flex flex-col items-center gap-1.5">
-                <div className="size-9 rounded-full bg-white/10" />
+                <Crest label={liveMatch.away} className="size-9 rounded-full" textClassName="text-[11px]" />
                 <p className="text-[11px] font-semibold text-white">{liveMatch.away}</p>
               </div>
             </div>

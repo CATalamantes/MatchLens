@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Avatar from './Avatar'
 
 export default function PlayerCard({ player }) {
   const { id, name, team, position, goals, assists } = player
@@ -8,7 +9,7 @@ export default function PlayerCard({ player }) {
       to={`/players/${id}`}
       className="flex flex-col gap-3 rounded-xl border border-dash bg-dash-card p-4"
     >
-      <div className="h-[130px] w-full rounded-lg bg-white/10" />
+      <Avatar name={name} className="h-[130px] w-full rounded-lg" textClassName="text-[28px]" />
       <div className="flex flex-col gap-1">
         <p className="text-caption font-bold uppercase text-primary">{team}</p>
         <p className="text-body-lg font-bold text-white">{name}</p>

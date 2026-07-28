@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import TeamCard from '../components/TeamCard'
+import { useSessionUser } from '../hooks/useSessionUser'
 import { useTeamSearch } from '../hooks/useTeamSearch'
 import { teams } from '../mocks/teams'
+
+const API_URL = import.meta.env.VITE_API_URL ?? ''
 
 const TRENDING_TAGS = ['Lionel Messi', 'Kylian Mbappé', 'World Cup 2026', 'Argentina', 'France']
 
@@ -32,21 +35,56 @@ function SearchIcon({ className }) {
 }
 
 export default function Discover() {
-  const { searchTerm, setSearchTerm, activeGroup, setActiveGroup, filteredTeams } = useTeamSearch(teams)
-  const [followedIds, setFollowedIds] = useState(
-    () => new Set(teams.filter((team) => team.isFollowing).map((team) => team.api_team_id)),
-  )
+  const sessionUser = useSessionUser()
+  const userId = sessionUser?.id
 
-  function handleToggleFollow(teamId) {
-    setFollowedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(teamId)) {
-        next.delete(teamId)
+  const { searchTerm, setSearchTerm, activeGroup, setActiveGroup, filteredTeams } = useTeamSearch(teams)
+  const [followedTeams, setFollowedTeams] = useState([])
+  const [followsLoading, setFollowsLoading] = useState(true)
+  const [followsLoadError, setFollowsLoadError] = useState(null)
+  const [followError, setFollowError] = useState(null)
+
+  useEffect(() => {
+    if (!userId) {
+      setFollowsLoading(false)
+      return
+    }
+    setFollowsLoading(true)
+    setFollowsLoadError(null)
+    fetch(`${API_URL}/api/follows/user/${userId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load followed teams')
+        return res.json()
+      })
+      .then(setFollowedTeams)
+      .catch((err) => {
+        console.error('Failed to load followed teams', err)
+        setFollowsLoadError('Could not load your followed teams — follow status may be out of date.')
+      })
+      .finally(() => setFollowsLoading(false))
+  }, [userId])
+
+  async function handleToggleFollow(team) {
+    setFollowError(null)
+    const existing = followedTeams.find((f) => String(f.api_team_id) === String(team.api_team_id))
+    try {
+      if (existing) {
+        const res = await fetch(`${API_URL}/api/follows/${existing.followed_team_id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error('Unfollow failed')
+        setFollowedTeams((prev) => prev.filter((f) => f.followed_team_id !== existing.followed_team_id))
       } else {
-        next.add(teamId)
+        const res = await fetch(`${API_URL}/api/follows`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, api_team_id: team.api_team_id, team_name: team.name }),
+        })
+        if (!res.ok) throw new Error('Follow failed')
+        const created = await res.json()
+        setFollowedTeams((prev) => [...prev, created])
       }
-      return next
-    })
+    } catch (err) {
+      setFollowError('Could not update follow status. Please try again.')
+    }
   }
 
   return (
@@ -118,13 +156,15 @@ export default function Discover() {
           <p className="text-[18px] font-bold text-white">Top Featured Teams</p>
           <p className="text-[13px] font-semibold text-primary">SEE ALL</p>
         </div>
+        {followsLoadError && <p className="text-[12px] text-dash-live">{followsLoadError}</p>}
+        {followError && <p className="text-[12px] text-dash-live">{followError}</p>}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {filteredTeams.map((team) => (
             <TeamCard
               key={team.api_team_id}
               team={team}
-              isFollowing={followedIds.has(team.api_team_id)}
-              onToggleFollow={handleToggleFollow}
+              isFollowing={followedTeams.some((f) => String(f.api_team_id) === String(team.api_team_id))}
+              onToggleFollow={() => handleToggleFollow(team)}
             />
           ))}
         </div>

@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import Avatar from '../components/Avatar'
 import { getMockPlayerDetail } from '../mocks/playerDetail'
 
 function StarRating({ rating }) {
@@ -35,7 +36,11 @@ export default function PlayerDetail() {
           <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
           <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
             <div className="flex items-center gap-5">
-              <div className="size-[100px] shrink-0 rounded-full border-2 border-primary bg-white/10" />
+              <Avatar
+                name={player.name}
+                className="size-[100px] shrink-0 rounded-full border-2 border-primary"
+                textClassName="text-[28px]"
+              />
               <div className="flex flex-col gap-1.5">
                 <p className="text-[28px] font-extrabold text-white">{player.name}</p>
                 <div className="flex flex-wrap items-center gap-2">
