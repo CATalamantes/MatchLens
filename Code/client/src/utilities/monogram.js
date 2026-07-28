@@ -1,8 +1,7 @@
 // Shared helper for Crest and Avatar. Team crests, match badges, and player
-// photos have no image source anywhere in the API (see
-// planning/frontend_audit.md §2.2) — every team/match/player endpoint is
-// hand-written dummy data with zero image/crest/badge/photo fields. Rather
-// than a blank grey block (or worse, an invented logo), these render a
+// photos have no image source anywhere in the API. Every team/match/player
+// endpoint is hand-written dummy data with zero image/crest/badge/photo fields.
+// Rather than a blank grey block (or worse, an invented logo), these render a
 // deterministic initials badge so the same name always gets the same look.
 
 const PALETTES = [

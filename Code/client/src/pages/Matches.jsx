@@ -3,10 +3,9 @@ import MatchCard from '../components/MatchCard'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
-// The live API only ever emits LIVE | HT | UPCOMING today (see
-// planning/frontend_audit.md §2.3) — FT is a real status the schema
-// supports but no fixture currently carries, so the Results tab is an
-// honest empty state rather than a broken filter.
+// The live API only ever emits LIVE | HT | UPCOMING today. FT is a real
+// status the schema supports but no fixture currently carries, so the
+// Results tab is an honest empty state rather than a broken filter.
 const TABS = [
   { label: 'Live', statuses: ['LIVE', 'HT'] },
   { label: 'Upcoming', statuses: ['UPCOMING'] },
