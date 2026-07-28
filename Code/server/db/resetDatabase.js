@@ -11,6 +11,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcrypt";
 import pool from "../config/database.js";
 import {
     demoUsers,
@@ -23,6 +24,8 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const SALT_ROUNDS = 10;
+
 async function rebuildSchema() {
     const schemaPath = path.resolve(__dirname, "schema.sql");
     const schemaSql = fs.readFileSync(schemaPath, "utf-8");
@@ -31,20 +34,23 @@ async function rebuildSchema() {
 }
 
 async function seedUsers() {
+    // sequential, not Promise.all: each hash is deliberately slow and we want
+    // predictable user_id ordering for the seed rows the other tables reference
     for (const user of demoUsers) {
+        const passwordHash = await bcrypt.hash(user.password, SALT_ROUNDS);
         await pool.query(
             `INSERT INTO users (username, email, password_hash, profile_image_url, total_points)
              VALUES ($1, $2, $3, $4, $5)`,
             [
                 user.username,
                 user.email,
-                user.password_hash,
+                passwordHash,
                 user.profile_image_url,
                 user.total_points,
             ],
         );
     }
-    console.log(`✅ ${demoUsers.length} demo users inserted`);
+    console.log(`✅ ${demoUsers.length} demo users inserted (passwords hashed)`);
 }
 
 async function seedFollowedTeams() {

@@ -20,16 +20,24 @@ DROP TABLE IF EXISTS users;
 
 -- =========================================================
 -- USERS — one row per account
+--
+-- An account is reachable either by password (local signup) or by
+-- github_id (OAuth), so neither credential column can be NOT NULL on
+-- its own — the users_has_credential CHECK enforces "at least one".
 -- =========================================================
 CREATE TABLE users (
     user_id           SERIAL PRIMARY KEY,
     username          VARCHAR(50)  NOT NULL UNIQUE,
     email             VARCHAR(255) NOT NULL UNIQUE,
-    password_hash     VARCHAR(255) NOT NULL,
-    profile_image_url VARCHAR(500),
+    password_hash     VARCHAR(255),          -- NULL for a GitHub-only account
+    github_id         VARCHAR(255) UNIQUE,   -- GitHub's numeric id, as text
+    profile_image_url VARCHAR(500),          -- GitHub avatar_url for OAuth users
     total_points      INTEGER NOT NULL DEFAULT 0,
     created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at        TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT users_has_credential
+        CHECK (password_hash IS NOT NULL OR github_id IS NOT NULL)
 );
 
 -- =========================================================

@@ -27,8 +27,9 @@ const UsersAPI = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(user)
         })
-        if (!res.ok) throw new Error('Failed to create user')
-        return res.json()
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Failed to create user')
+        return data
     }
 }
 
