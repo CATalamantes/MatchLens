@@ -5,7 +5,7 @@ import './dotenv.js'
 // deploy.
 //
 // Trailing slashes are stripped in both directions: a CLIENT_URL ending in '/'
-// would otherwise build '.../\/home', and GitHub matches the callback URL
+// would otherwise build '.../\/login', and GitHub matches the callback URL
 // byte-for-byte, so a stray slash is a redirect_uri_mismatch.
 const trim = (url) => url.replace(/\/+$/, '')
 

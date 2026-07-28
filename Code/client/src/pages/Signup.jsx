@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import UsersAPI from '../services/UsersAPI'
 import GitHubMark from '../components/GitHubMark'
+import { AUTH_ORIGIN } from '../config/api'
 import { validateSignup } from '../utilities/validateSignup'
 import '../css/Login.css'
 
-const Signup = ({ title, api_url }) => {
+const Signup = ({ title }) => {
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [username, setUsername] = useState('')
@@ -14,7 +15,7 @@ const Signup = ({ title, api_url }) => {
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
 
-    const AUTH_URL = `${api_url}/auth`
+    const AUTH_URL = `${AUTH_ORIGIN}/auth`
 
     useEffect(() => {
         document.title = title
@@ -35,7 +36,7 @@ const Signup = ({ title, api_url }) => {
             setLoading(true)
             const user = await UsersAPI.createUser({ username, email, password })
             localStorage.setItem('matchlens_user', JSON.stringify(user))
-            navigate('/home')
+            navigate('/', { replace: true })
         } catch (err) {
             setError(err.message)
         } finally {
@@ -109,7 +110,7 @@ const Signup = ({ title, api_url }) => {
                 </div>
 
                 <p className='login-signup'>
-                    Already have an account? <Link to='/'>Sign In</Link>
+                    Already have an account? <Link to='/login'>Sign In</Link>
                 </p>
             </div>
 

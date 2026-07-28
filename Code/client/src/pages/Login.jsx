@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import UsersAPI from '../services/UsersAPI'
 import GitHubMark from '../components/GitHubMark'
+import { AUTH_ORIGIN } from '../config/api'
 import { validateLogin } from '../utilities/validateLogin'
 import '../css/Login.css'
 
@@ -13,15 +14,20 @@ const OAUTH_ERRORS = {
     account_conflict: 'That email is already registered to a different account. Try signing in with your password.'
 }
 
-const Login = ({ title, api_url }) => {
+const Login = ({ title }) => {
     const navigate = useNavigate()
+    const location = useLocation()
     const [searchParams] = useSearchParams()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
 
-    const AUTH_URL = `${api_url}/auth`
+    const AUTH_URL = `${AUTH_ORIGIN}/auth`
+
+    // Where RequireAuth turned this visitor away from, so signing in resumes
+    // the page they actually asked for instead of always landing on the dashboard.
+    const destination = location.state?.from?.pathname ?? '/'
 
     useEffect(() => {
         document.title = title
@@ -47,7 +53,7 @@ const Login = ({ title, api_url }) => {
             setLoading(true)
             const user = await UsersAPI.login(email, password)
             localStorage.setItem('matchlens_user', JSON.stringify(user))
-            navigate('/home')
+            navigate(destination, { replace: true })
         } catch (err) {
             setError(err.message)
         } finally {

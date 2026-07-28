@@ -24,12 +24,13 @@ Frontend:
 - React
 - React Router
 - Vite
-- Pico CSS
+- Tailwind CSS
 
 Backend:
 - Node.js
 - Express
 - PostgreSQL (node-postgres / pg)
+- External football data API (proxied server-side)
 - Render
 
 ## Features
@@ -46,11 +47,11 @@ Users can search for players, teams, and matches to quickly find what they're lo
 
 [gif goes here]
 
-### Data Display
+### ✅Data Display
 
 Users can browse players (history, team, and stats), match details (score, lineup, venue, weather), and a calendar of fixtures.
 
-[gif goes here]
+<img src='./Gif/match.gif' title='Data Dispaly Demo' width='600' alt='Authentication Demo' />
 
 ### Leaderboards
 
@@ -58,9 +59,10 @@ Users can view ranked tables of top players by their stats and top users by thei
 
 [gif goes here]
 
-### Virtual Points
+### Score Predictions
 
-Users can back their team with virtual points that move them up the user leaderboard.
+Users can predict the score of upcoming matches to earn points and move
+up the user leaderboard.
 
 [gif goes here]
 
@@ -82,11 +84,11 @@ Users can access video highlights or full-game footage of a match.
 
 [gif goes here]
 
-### User Profile
+### ✅User Profile
 
 Users can customize their profile with a profile image and personal details.
 
-[gif goes here]
+<img src='./Gif/profile.gif' title='User Profile Demo' width='600' alt='Authentication Demo' />
 
 ### [ADDITIONAL FEATURES GO HERE - ADD ALL FEATURES HERE IN THE FORMAT ABOVE; you will check these off and add gifs as you complete them]
 

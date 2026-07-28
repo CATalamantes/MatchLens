@@ -43,20 +43,24 @@ router.get(
 // all. This shape covers error, refusal and consent-denied the same way.
 router.get('/github/callback', (req, res, next) => {
     passport.authenticate('github', async (err, user, info) => {
+        // Failures go back to /login, which is the only page that reads
+        // ?error= and turns the code into a message.
         if (err) {
             console.error('github oauth failed:', err)
-            return res.redirect(`${CLIENT_URL}/?error=oauth_failed`)
+            return res.redirect(`${CLIENT_URL}/login?error=oauth_failed`)
         }
 
         // Also covers the user cancelling at GitHub and a bad state parameter:
         // passport-oauth2 turns both into a fail().
         if (!user) {
-            return res.redirect(`${CLIENT_URL}/?error=${info?.code ?? 'oauth_denied'}`)
+            return res.redirect(`${CLIENT_URL}/login?error=${info?.code ?? 'oauth_denied'}`)
         }
 
         try {
             await establishSession(req, user)
-            res.redirect(`${CLIENT_URL}/home`)
+            // '/' is the dashboard; the client's route guard revalidates the
+            // session it was just handed.
+            res.redirect(`${CLIENT_URL}/`)
         } catch (loginError) {
             next(loginError)
         }

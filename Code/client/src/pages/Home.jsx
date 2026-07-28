@@ -1,236 +1,265 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Navigation from '../components/Navigation'
-import AuthAPI from '../services/AuthAPI'
-import '../css/Home.css'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import MatchCard from '../components/MatchCard'
+import PlayerCard from '../components/PlayerCard'
+import StandingsTable from '../components/StandingsTable'
+import StatBar from '../components/StatBar'
+import { knockoutBracket, matchStatistics } from '../mocks/dashboardMocks'
 
-// ── Dummy data ────────────────────────────────────────────────
-const bracket = {
-    leftSemis: [
-        { top: { team: 'FRA', score: 2 }, bottom: { team: 'MAR', score: 0 } },
-        { top: { team: 'ESP', score: 2 }, bottom: { team: 'BEL', score: 1 } }
-    ],
-    leftFinal: { top: { team: 'FRA', score: '14 Jul' }, bottom: { team: 'ESP', score: '—' } },
-    final: { label: 'FINAL • 19 JUL', top: 'TBD', bottom: 'TBD' },
-    rightFinal: { top: { team: 'NOR', score: 'Tomorrow' }, bottom: { team: 'ENG', score: '—' } },
-    rightSemis: [
-        { top: { team: 'NOR', score: 2 }, bottom: { team: 'BRA', score: 1 } },
-        { top: { team: 'MEX', score: 2 }, bottom: { team: 'ENG', score: 3 } }
-    ]
+// Falls back to a relative path (same-origin) when unset, so requests
+// still work via the Vite proxy in dev and the Express static server in
+// prod without ever hardcoding a host.
+const API_URL = import.meta.env.VITE_API_URL ?? ''
+
+// No login/session exists yet — stand-in for "the logged-in user" until
+// real auth lands, same placeholder used on the Profile page.
+const DEMO_USER_ID = 1
+
+function getCountdown(dateString, now) {
+  const diff = Math.max(0, new Date(dateString).getTime() - now)
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+  }
 }
 
-const followedTeams = [
-    { pos: 1, team: 'Liverpool', badge: '🔴', p: 24, wdl: '17/3/4', gs: 55, pts: 54, form: [1, 1, 1, 1, 0] },
-    { pos: 2, team: 'Arsenal', badge: '🔴', p: 24, wdl: '16/4/4', gs: 48, pts: 52, form: [1, 1, 1, 1, 1] },
-    { pos: 3, team: 'Man City', badge: '🔵', p: 23, wdl: '15/6/2', gs: 56, pts: 51, form: [0, 0, 1, 0, 1] }
-]
-
-const topScorers = [
-    { name: 'Erling Haaland', team: 'MANCHESTER CITY', goals: 21, avatar: '🟦' },
-    { name: 'Mohamed Salah', team: 'LIVERPOOL FC', goals: 18, avatar: '🟥' }
-]
-
-const playerOfTheWeek = {
-    name: 'Bukayo Saka',
-    successRate: '88.4%',
-    distance: '11.2km'
-}
-
-const leaderboard = {
-    weeklyAllowance: '1,000',
-    currentPoints: '24,580'
-}
-// ─────────────────────────────────────────────────────────────
-
-const Matchup = ({ top, bottom }) => (
-    <div className='bracket-match'>
-        <div className='bracket-row'>
-            <span>{top.team}</span>
-            <span className='bracket-score'>{top.score}</span>
-        </div>
-        <div className='bracket-row'>
-            <span>{bottom.team}</span>
-            <span className='bracket-score'>{bottom.score}</span>
-        </div>
+function TimeUnit({ value, label }) {
+  return (
+    <div className="flex w-12 flex-col items-center">
+      <p className="text-[18px] font-bold text-white">{String(value).padStart(2, '0')}</p>
+      <p className="text-[9px] text-secondary">{label}</p>
     </div>
-)
-
-const Home = ({ title, api_url }) => {
-    const navigate = useNavigate()
-    // only blocks the first paint when there is nothing stored locally yet
-    const [checkingSession, setCheckingSession] = useState(
-        () => !localStorage.getItem('matchlens_user')
-    )
-
-    useEffect(() => {
-        document.title = title
-    }, [title])
-
-    useEffect(() => {
-        // The server session is the source of truth for every sign-in path, so
-        // always revalidate. localStorage is only a hint that lets us paint
-        // immediately; trusting it outright left a stale entry rendering the
-        // page as logged-in while every request was actually unauthenticated.
-        let active = true
-
-        AuthAPI.getSession(api_url).then((user) => {
-            if (!active) return
-
-            if (user) {
-                localStorage.setItem('matchlens_user', JSON.stringify(user))
-                setCheckingSession(false)
-            } else {
-                localStorage.removeItem('matchlens_user')
-                navigate('/')
-            }
-        })
-
-        return () => { active = false }
-    }, [navigate, api_url])
-
-    if (checkingSession) return null
-
-    return (
-        <div className='home-page'>
-            <Navigation api_url={api_url} />
-
-            <main className='home-main'>
-                <h2 className='home-section-title'>Tournament Path</h2>
-
-                <section className='bracket-card'>
-                    <div className='bracket'>
-                        <div className='bracket-col'>
-                            {bracket.leftSemis.map((m, i) => <Matchup key={i} {...m} />)}
-                        </div>
-                        <div className='bracket-col bracket-col-center'>
-                            <Matchup {...bracket.leftFinal} />
-                        </div>
-                        <div className='bracket-col bracket-final-col'>
-                            <div className='bracket-trophy'>🏆</div>
-                            <div className='bracket-final'>
-                                <span className='bracket-final-label'>{bracket.final.label}</span>
-                                <span className='bracket-final-teams'>
-                                    <strong>{bracket.final.top}</strong>
-                                    <span className='bracket-vs'>VS</span>
-                                    <strong>{bracket.final.bottom}</strong>
-                                </span>
-                            </div>
-                        </div>
-                        <div className='bracket-col bracket-col-center'>
-                            <Matchup {...bracket.rightFinal} />
-                        </div>
-                        <div className='bracket-col'>
-                            {bracket.rightSemis.map((m, i) => <Matchup key={i} {...m} />)}
-                        </div>
-                    </div>
-                </section>
-
-                <section className='leaderboard-card'>
-                    <div className='leaderboard-copy'>
-                        <h3>Fan Leaderboard Preview</h3>
-                        <p>Your match predictions are paying off. You're currently in the top 5% of global fans this week.</p>
-                    </div>
-                    <div className='leaderboard-stat'>
-                        <span className='leaderboard-stat-label'>WEEKLY ALLOWANCE</span>
-                        <span className='leaderboard-stat-value'>{leaderboard.weeklyAllowance}</span>
-                    </div>
-                    <div className='leaderboard-stat'>
-                        <span className='leaderboard-stat-label'>CURRENT POINTS</span>
-                        <span className='leaderboard-stat-value leaderboard-points'>{leaderboard.currentPoints}</span>
-                    </div>
-                    <button className='leaderboard-btn'>ENTER LEADERBOARD</button>
-                </section>
-
-                <div className='home-grid'>
-                    <section className='teams-section'>
-                        <div className='teams-header'>
-                            <h2 className='home-section-title'>Your Followed Teams</h2>
-                            <span className='teams-filter'>PREMIER LEAGUE ⌄</span>
-                        </div>
-                        <div className='teams-card'>
-                            <table className='teams-table'>
-                                <thead>
-                                    <tr>
-                                        <th>POS</th>
-                                        <th>TEAM</th>
-                                        <th>P</th>
-                                        <th>W/D/L</th>
-                                        <th>GS</th>
-                                        <th>PTS</th>
-                                        <th>FORM</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {followedTeams.map((team) => (
-                                        <tr key={team.pos}>
-                                            <td className='teams-pos'>{team.pos}</td>
-                                            <td className='teams-name'>
-                                                <span className='teams-badge'>{team.badge}</span> {team.team}
-                                            </td>
-                                            <td>{team.p}</td>
-                                            <td>{team.wdl}</td>
-                                            <td>{team.gs}</td>
-                                            <td className='teams-pts'>{team.pts}</td>
-                                            <td>
-                                                <span className='teams-form'>
-                                                    {team.form.map((won, i) => (
-                                                        <span key={i} className={won ? 'form-dot win' : 'form-dot'} />
-                                                    ))}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-
-                    <aside className='home-aside'>
-                        <section className='scorers-card'>
-                            <h3>Top Scorers</h3>
-                            {topScorers.map((player, index) => (
-                                <div key={index} className='scorer-row'>
-                                    <span className='scorer-avatar'>{player.avatar}</span>
-                                    <span className='scorer-info'>
-                                        <strong>{player.name}</strong>
-                                        <small>{player.team}</small>
-                                    </span>
-                                    <span className='scorer-goals'>{player.goals}</span>
-                                </div>
-                            ))}
-                        </section>
-
-                        <section className='potw-card'>
-                            <div className='potw-banner'>
-                                <span className='potw-label'>PLAYER OF THE WEEK</span>
-                                <span className='potw-name'>{playerOfTheWeek.name}</span>
-                            </div>
-                            <div className='potw-stats'>
-                                <div className='potw-stat'>
-                                    <span className='potw-stat-label'>SUCCESS RATE</span>
-                                    <span className='potw-stat-value'>{playerOfTheWeek.successRate}</span>
-                                </div>
-                                <div className='potw-stat'>
-                                    <span className='potw-stat-label'>DISTANCE / 90</span>
-                                    <span className='potw-stat-value potw-distance'>{playerOfTheWeek.distance}</span>
-                                </div>
-                            </div>
-                        </section>
-                    </aside>
-                </div>
-            </main>
-
-            <footer className='home-footer'>
-                <span>© 2024 MatchLens. Precision Football Analytics.</span>
-                <ul>
-                    <li>Terms of Service</li>
-                    <li>Privacy Policy</li>
-                    <li>Data Sources</li>
-                    <li>API Access</li>
-                </ul>
-            </footer>
-        </div>
-    )
+  )
 }
 
-export default Home
+function BracketMatch({ home, away, highlight }) {
+  return (
+    <div
+      className={`flex w-[120px] flex-col gap-1 rounded-md p-2 text-[11px] ${
+        highlight ? 'border border-primary bg-primary/10' : 'bg-dash-sidebar'
+      }`}
+    >
+      <p className={`font-semibold ${highlight ? 'text-primary' : 'text-white'}`}>{home}</p>
+      <p className={highlight ? 'text-white' : 'text-secondary'}>{away}</p>
+    </div>
+  )
+}
+
+export default function Home() {
+  const [matches, setMatches] = useState([])
+  const [teams, setTeams] = useState([])
+  const [topScorers, setTopScorers] = useState([])
+  const [user, setUser] = useState(null)
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/matches`)
+      .then((res) => res.json())
+      .then(setMatches)
+      .catch((err) => console.error('Failed to load matches', err))
+
+    fetch(`${API_URL}/api/teams`)
+      .then((res) => res.json())
+      .then(setTeams)
+      .catch((err) => console.error('Failed to load teams', err))
+
+    fetch(`${API_URL}/api/players?sort=goals`)
+      .then((res) => res.json())
+      .then((players) => setTopScorers(players.slice(0, 3)))
+      .catch((err) => console.error('Failed to load players', err))
+
+    fetch(`${API_URL}/api/users/${DEMO_USER_ID}`)
+      .then((res) => res.json())
+      .then(setUser)
+      .catch((err) => console.error('Failed to load user', err))
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const upcomingMatch = matches.find((m) => m.status === 'UPCOMING')
+  const liveMatch = matches.find((m) => m.status === 'LIVE')
+  const countdown = upcomingMatch ? getCountdown(upcomingMatch.date, now) : null
+
+  return (
+    <div className="flex gap-6 p-6">
+      <div className="flex flex-1 flex-col gap-6">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-2xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
+          <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
+            <div className="flex max-w-[400px] flex-col gap-2">
+              <span className="inline-flex w-fit items-center rounded bg-dash-live px-2 py-1 text-[10px] font-bold text-white">
+                {upcomingMatch ? 'UPCOMING MAJOR' : 'NO UPCOMING MATCH'}
+              </span>
+              {upcomingMatch ? (
+                <>
+                  <h1 className="text-[24px] font-extrabold text-white">
+                    {upcomingMatch.home} vs {upcomingMatch.away}
+                  </h1>
+                  <p className="text-[13px] text-primary">
+                    {new Date(upcomingMatch.date).toLocaleDateString('en-GB', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                    })}{' '}
+                    • {upcomingMatch.venue}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[13px] text-secondary">Check back soon for the next fixture.</p>
+              )}
+            </div>
+            {upcomingMatch && countdown && (
+              <div className="flex items-center gap-3 rounded-xl bg-black/30 p-3">
+                <TimeUnit value={countdown.days} label="Days" />
+                <span className="text-[14px] text-secondary">:</span>
+                <TimeUnit value={countdown.hours} label="Hours" />
+                <span className="text-[14px] text-secondary">:</span>
+                <TimeUnit value={countdown.minutes} label="Min" />
+                <span className="text-[14px] text-secondary">:</span>
+                <TimeUnit value={countdown.seconds} label="Sec" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Match ticker */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex gap-6 text-[13px]">
+              <p className="text-white">Latest Match</p>
+              <p className="text-secondary">Coming Match</p>
+              <p className="text-secondary">Pre-season</p>
+              <p className="text-secondary">Live Games</p>
+            </div>
+            <p className="text-[11px] font-bold text-primary">SEE ALL</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {matches.map((match) => (
+              <MatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        </section>
+
+        {/* Knockout bracket */}
+        <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
+          <h2 className="text-[16px] font-bold text-white">🏆 World Cup 2026 Knockout Bracket</h2>
+          <div className="flex items-center justify-between gap-4 overflow-x-auto py-2">
+            <div className="flex flex-col gap-6">
+              {knockoutBracket.quarterLeft.map((m, i) => (
+                <BracketMatch key={i} home={m.home} away={m.away} />
+              ))}
+            </div>
+            <div className="h-px w-8 shrink-0 bg-dash" />
+            <BracketMatch home={knockoutBracket.semiLeft.home} away={knockoutBracket.semiLeft.away} highlight />
+            <div className="flex shrink-0 flex-col items-center gap-3">
+              <p className="text-[10px] font-bold uppercase text-primary">Grand Final</p>
+              <div className="flex w-[160px] flex-col items-center gap-2 rounded-lg border-2 border-primary bg-black p-3 text-center">
+                <p className="text-[12px] font-bold text-white">
+                  {knockoutBracket.final.home} vs {knockoutBracket.final.away}
+                </p>
+                <p className="text-[10px] text-secondary">{knockoutBracket.final.venue}</p>
+              </div>
+            </div>
+            <BracketMatch home={knockoutBracket.semiRight.home} away={knockoutBracket.semiRight.away} highlight />
+            <div className="h-px w-8 shrink-0 bg-dash" />
+            <div className="flex flex-col gap-6">
+              {knockoutBracket.quarterRight.map((m, i) => (
+                <BracketMatch key={i} home={m.home} away={m.away} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Standings */}
+        <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[16px] font-bold text-white">🔥 Standings</h2>
+            <p className="text-[12px] font-semibold text-secondary">MATCHDAY 24</p>
+          </div>
+          <StandingsTable teams={teams} />
+        </section>
+
+        {/* Top scorers */}
+        <section className="flex flex-col gap-4">
+          <h2 className="text-[16px] font-bold text-white">⚽ Top Scorers</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {topScorers.map((player) => (
+              <PlayerCard key={player.id} player={player} />
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {/* Live match widget */}
+      <aside className="flex w-[280px] shrink-0 flex-col gap-6 rounded-2xl border border-dash bg-dash-sidebar p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="size-2 shrink-0 rounded-full bg-dash-live" />
+            <p className="text-[14px] font-bold text-white">Live Match</p>
+          </div>
+          {liveMatch && <p className="text-[12px] font-semibold text-primary">{liveMatch.minute}'</p>}
+        </div>
+
+        {liveMatch ? (
+          <>
+            <div className="flex items-center justify-center gap-4 rounded-xl border border-dash bg-dashboard p-3">
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="size-9 rounded-full bg-white/10" />
+                <p className="text-[11px] font-semibold text-white">{liveMatch.home}</p>
+              </div>
+              <div className="flex flex-col items-center">
+                <p className="text-[24px] font-extrabold text-primary">
+                  {liveMatch.home_score} - {liveMatch.away_score}
+                </p>
+                <p className="text-[10px] text-secondary">{liveMatch.venue}</p>
+              </div>
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="size-9 rounded-full bg-white/10" />
+                <p className="text-[11px] font-semibold text-white">{liveMatch.away}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <p className="text-[12px] font-bold uppercase text-secondary">Match Statistics</p>
+              {matchStatistics.map((stat) => (
+                <StatBar key={stat.label} {...stat} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="text-[12px] text-secondary">No live match right now.</p>
+        )}
+
+        <div className="h-px w-full bg-dash" />
+
+        <div className="flex flex-col gap-2 rounded-xl border border-primary bg-primary/10 p-4">
+          <p className="text-[13px] font-bold text-primary">⚡ Leaderboard Surge</p>
+          <p className="text-[12px] text-white">Your predictions are paying off. Top 5% this week.</p>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-xl border border-dash bg-dashboard p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-secondary">Points</p>
+            <p className="text-[16px] font-extrabold text-primary">
+              {(user?.points ?? 0).toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          to="/leaderboard"
+          className="flex items-center justify-center rounded-lg bg-primary p-3.5 text-[13px] font-bold text-black"
+        >
+          ENTER LEADERBOARD
+        </Link>
+      </aside>
+    </div>
+  )
+}
