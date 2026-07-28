@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { followedTeams } from '../../mocks/followedTeams'
+import { useSessionUser } from '../../hooks/useSessionUser'
 import AuthAPI from '../../services/AuthAPI'
+
+const API_URL = import.meta.env.VITE_API_URL ?? ''
 
 const menuItems = [
   { label: 'Dashboard', to: '/', end: true, icon: DashboardIcon },
@@ -65,6 +68,16 @@ function SignOutIcon({ className }) {
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const user = useSessionUser()
+  const [followedTeams, setFollowedTeams] = useState([])
+
+  useEffect(() => {
+    if (!user?.id) return
+    fetch(`${API_URL}/api/follows/user/${user.id}`)
+      .then((res) => res.json())
+      .then(setFollowedTeams)
+      .catch((err) => console.error('Failed to load followed teams', err))
+  }, [user?.id])
 
   // AuthAPI.logout clears localStorage itself. The server also has to destroy
   // the session — clearing only localStorage left the cookie alive, so the next
@@ -121,22 +134,42 @@ export default function Sidebar() {
           <p className="text-[11px] font-bold uppercase text-secondary">Followed Teams</p>
           <div className="flex flex-col gap-2.5">
             {followedTeams.map((team) => (
-              <div key={team.api_team_id} className="flex items-center gap-3">
+              <div key={team.followed_team_id} className="flex items-center gap-3">
                 <div className="size-5 shrink-0 rounded bg-white/10" />
                 <p className="text-[13px] font-medium text-white">{team.team_name}</p>
               </div>
             ))}
+            {followedTeams.length === 0 && (
+              <p className="text-[12px] text-secondary">No teams followed yet.</p>
+            )}
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="mt-auto flex items-center gap-3 rounded-lg px-3 py-2 text-secondary hover:bg-white/5 hover:text-white"
-        >
-          <SignOutIcon className="size-4 shrink-0" />
-          <p className="text-[13px] font-semibold">Sign Out</p>
-        </button>
+        <div className="mt-auto flex flex-col gap-1.5">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-3 py-2 ${
+                isActive ? 'bg-primary/10 text-primary' : 'text-secondary hover:bg-white/5 hover:text-white'
+              }`
+            }
+          >
+            <div
+              className="size-7 shrink-0 rounded-full bg-white/10 bg-cover bg-center"
+              style={user?.profile_image_url ? { backgroundImage: `url(${user.profile_image_url})` } : undefined}
+            />
+            <p className="truncate text-[13px] font-semibold">{user?.username ?? 'Profile'}</p>
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-secondary hover:bg-white/5 hover:text-white"
+          >
+            <SignOutIcon className="size-4 shrink-0" />
+            <p className="text-[13px] font-semibold">Sign Out</p>
+          </button>
+        </div>
       </aside>
 
       <main className="flex-1 bg-dashboard">
