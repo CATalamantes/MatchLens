@@ -1,12 +1,24 @@
 import { paletteFor, shortLabel } from '../utilities/monogram'
 
 // Drop-in replacement for the old `bg-white/10` crest blocks — pass the same
-// size/shape classes via `className`. No team, match, or player endpoint
-// returns a crest/badge image, so this is the honest fallback: a
-// deterministic initials badge, never an invented logo.
+// size/shape classes via `className`. Renders the real crest when `src` is
+// available (only `/api/teams` returns one so far); otherwise falls back to
+// a deterministic initials badge, never an invented logo.
 // `compact` hides the label for slots too small to render legible text.
-export default function Crest({ label, compact = false, className = '', textClassName = 'text-[11px]' }) {
+export default function Crest({ label, src, compact = false, className = '', textClassName = 'text-[11px]' }) {
   const safeLabel = label || '?'
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        title={safeLabel}
+        className={`shrink-0 bg-white object-contain ${className}`}
+      />
+    )
+  }
+
   const palette = paletteFor(safeLabel)
 
   return (
