@@ -7,3 +7,35 @@
     @apply font-sans bg-dashboard text-white;
   }
 }
+
+/*
+ * Auth-page palette.
+ *
+ * Login/Signup still use the hand-written css/Login.css from the auth branch,
+ * which predates the Tailwind design system and reads these custom properties.
+ * They used to be declared on :root, but the dashboard rebuild replaced
+ * index.css wholesale and dropped them, leaving Login.css referencing
+ * undefined vars.
+ *
+ * Scoped to .login-page (the wrapper both auth pages render) rather than
+ * restored to :root, so this older palette can't leak into the Tailwind
+ * dashboard theme. The background is set here too because it used to come
+ * from body, which is now bg-dashboard.
+ *
+ * TODO: restyle Login/Signup with the Tailwind design tokens and delete both
+ * this block and css/Login.css.
+ */
+.login-page {
+  --ml-card-border: #2b2f22;
+  --ml-text: #e8eae2;
+  --ml-text-dim: #9aa08d;
+  --ml-green: #a9c283;
+  --ml-green-strong: #8ba565;
+  --ml-live: #e5484d;
+
+  background:
+    radial-gradient(1200px 600px at 80% 0%, rgba(90, 110, 60, 0.18), transparent 60%),
+    #101209;
+  color: var(--ml-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}

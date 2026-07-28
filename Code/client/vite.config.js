@@ -14,6 +14,13 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        // dev only — never ships. Follows VITE_API_URL so changing the API port
+        // doesn't mean editing this file.
+        //
+        // Only /api is proxied. /auth is deliberately left off: the GitHub
+        // OAuth round trip has to land back on the API's own origin for the
+        // session cookie to be set, so the client calls it absolutely instead
+        // (see src/config/api.js).
         '/api': {
           target: apiUrl
         }

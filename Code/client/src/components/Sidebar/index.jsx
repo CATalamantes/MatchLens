@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { followedTeams } from '../../mocks/followedTeams'
+import AuthAPI from '../../services/AuthAPI'
 
 const menuItems = [
   { label: 'Dashboard', to: '/', end: true, icon: DashboardIcon },
@@ -53,7 +54,29 @@ function SearchIcon({ className }) {
   )
 }
 
+function SignOutIcon({ className }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className}>
+      <path d="M6 2.5H3.5v11H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M9 5l3 3-3 3M12 8H6.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export default function Sidebar() {
+  const navigate = useNavigate()
+
+  // AuthAPI.logout clears localStorage itself. The server also has to destroy
+  // the session — clearing only localStorage left the cookie alive, so the next
+  // visit picked the session back up and silently signed you in again.
+  const handleSignOut = async () => {
+    try {
+      await AuthAPI.logout()
+    } finally {
+      navigate('/login', { replace: true })
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-dashboard">
       <aside className="flex w-[220px] shrink-0 flex-col gap-7 border-r border-dash bg-dash-sidebar p-5">
@@ -105,6 +128,15 @@ export default function Sidebar() {
             ))}
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-auto flex items-center gap-3 rounded-lg px-3 py-2 text-secondary hover:bg-white/5 hover:text-white"
+        >
+          <SignOutIcon className="size-4 shrink-0" />
+          <p className="text-[13px] font-semibold">Sign Out</p>
+        </button>
       </aside>
 
       <main className="flex-1 bg-dashboard">

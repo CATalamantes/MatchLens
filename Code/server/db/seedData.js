@@ -1,22 +1,24 @@
+// `password` is the plaintext demo credential you log in with — resetDatabase.js
+// bcrypt-hashes it before insert, so nothing plaintext ever reaches the table.
 export const demoUsers = [
     {
         username: "carla_t",
         email: "demo@matchlens.com",
-        password_hash: "password123", // TODO: hash with bcrypt once auth is real
+        password: "password123",
         profile_image_url: null,
         total_points: 24580,
     },
     {
         username: "jordan_m",
         email: "fan@matchlens.com",
-        password_hash: "letmein",
+        password: "letmein",
         profile_image_url: null,
         total_points: 18740,
     },
     {
         username: "sam_fc",
         email: "scout@matchlens.com",
-        password_hash: "scout2024",
+        password: "scout2024",
         profile_image_url: null,
         total_points: 15220,
     },
