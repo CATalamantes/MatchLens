@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import UsersAPI from '../services/UsersAPI'
-import GitHubMark from '../components/GitHubMark'
-import { AUTH_ORIGIN } from '../config/api'
+import AuthLayout from '../components/AuthLayout'
+import { TextField, PasswordField } from '../components/AuthFields'
 import { validateSignup } from '../utilities/validateSignup'
-import '../css/Login.css'
 
 const Signup = ({ title }) => {
     const navigate = useNavigate()
@@ -14,8 +13,6 @@ const Signup = ({ title }) => {
     const [confirmPassword, setConfirmPassword] = useState('')
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
-
-    const AUTH_URL = `${AUTH_ORIGIN}/auth`
 
     useEffect(() => {
         document.title = title
@@ -45,91 +42,69 @@ const Signup = ({ title }) => {
     }
 
     return (
-        <div className='login-page'>
-            <div className='login-brand'>
-                <span className='login-brand-mark'>●</span>
-                <span className='login-brand-name'>MatchLens</span>
-            </div>
-
-            <div className='login-card'>
-                <h1>Create Account</h1>
-                <p className='login-subtitle'>Join MatchLens and start tracking every match</p>
-
-                <form onSubmit={handleSignUp} noValidate>
-                    <label className='login-label' htmlFor='email'>Email Address</label>
-                    <input
-                        id='email'
-                        type='email'
-                        placeholder='name@example.com'
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); setError(null) }}
-                    />
-
-                    <label className='login-label' htmlFor='username'>Username</label>
-                    <input
-                        id='username'
-                        type='text'
-                        placeholder='your_username'
+        <AuthLayout
+            title="Create Account"
+            subtitle="Join MatchLens to track matches and compete with friends"
+            paddingClassName="pt-10 pb-6"
+            gapClassName="gap-[24px]"
+            footerPrompt="Already have an account?"
+            footerLinkLabel="Sign In"
+            footerLinkTo="/login"
+        >
+            <form onSubmit={handleSignUp} noValidate className="flex w-full flex-col gap-[24px]">
+                <div className="flex w-full flex-col gap-[14px]">
+                    <TextField
+                        id="username"
+                        label="Username"
+                        type="text"
+                        placeholder="your_username"
                         value={username}
                         onChange={(e) => { setUsername(e.target.value); setError(null) }}
+                        autoComplete="username"
                     />
 
-                    <label className='login-label' htmlFor='password'>Password</label>
-                    <input
-                        id='password'
-                        type='password'
-                        placeholder='At least 8 characters'
+                    <TextField
+                        id="email"
+                        label="Email Address"
+                        type="email"
+                        placeholder="name@example.com"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setError(null) }}
+                        autoComplete="email"
+                    />
+
+                    <PasswordField
+                        id="password"
+                        label="Password"
+                        placeholder="At least 8 characters"
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setError(null) }}
+                        autoComplete="new-password"
                     />
 
-                    <label className='login-label' htmlFor='confirm-password'>Confirm Password</label>
-                    <input
-                        id='confirm-password'
-                        type='password'
-                        placeholder='••••••••'
+                    <PasswordField
+                        id="confirm-password"
+                        label="Confirm Password"
+                        placeholder="••••••••"
                         value={confirmPassword}
                         onChange={(e) => { setConfirmPassword(e.target.value); setError(null) }}
+                        autoComplete="new-password"
                     />
+                </div>
 
-                    { error && <p className='login-error'>{error}</p> }
+                <div className="flex w-full flex-col gap-3">
+                    { error && <p className="text-[13px] text-dash-live">{error}</p> }
 
-                    <button type='submit' className='login-submit' disabled={loading}>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full rounded-lg bg-primary py-4 text-[16px] font-bold text-dark transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
                         { loading ? 'Creating Account...' : 'Create Account' }
                     </button>
-                </form>
-
-                <div className='login-divider'>
-                    <span>OR CONTINUE WITH</span>
                 </div>
-
-                <div className='login-oauth'>
-                    <a href={`${AUTH_URL}/github`} className='login-oauth-btn'>
-                        <GitHubMark /> GitHub
-                    </a>
-                </div>
-
-                <p className='login-signup'>
-                    Already have an account? <Link to='/login'>Sign In</Link>
-                </p>
-            </div>
-
-            <div className='login-links'>
-                <span>Terms of Service</span>
-                <span className='login-dot'>•</span>
-                <span>Privacy Policy</span>
-                <span className='login-dot'>•</span>
-                <span>Help Center</span>
-            </div>
-
-            <footer className='login-footer'>
-                <span>© 2024 MatchLens. Precision Football Analytics.</span>
-                <span className='login-footer-right'>
-                    v2.4.0-Stable
-                    <span className='login-status'>● Systems Operational</span>
-                </span>
-            </footer>
-        </div>
+            </form>
+        </AuthLayout>
     )
 }
 

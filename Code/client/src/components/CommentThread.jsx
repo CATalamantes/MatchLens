@@ -1,3 +1,5 @@
+import Avatar from './Avatar'
+
 // Static placeholder pending real comment data + posting (Match Comments,
 // #7). No Figma reference exists for this yet, so it's a minimal mock
 // list matching the app's existing card styling — swap the mock array
@@ -15,7 +17,7 @@ export default function CommentThread() {
       <div className="flex flex-col gap-4">
         {mockComments.map((comment) => (
           <div key={comment.id} className="flex gap-3">
-            <div className="size-8 shrink-0 rounded-full bg-white/10" />
+            <Avatar name={comment.author} className="size-8 shrink-0 rounded-full" textClassName="text-[10px]" />
             <div className="flex flex-col gap-1">
               <p className="text-[12px] font-bold text-white">{comment.author}</p>
               <p className="text-[12px] text-secondary">{comment.text}</p>

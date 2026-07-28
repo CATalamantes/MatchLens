@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Crest from './Crest'
 
 function LeaderboardTable({ rows }) {
   return (
@@ -29,16 +30,16 @@ function LeaderboardTable({ rows }) {
               <p className="truncate text-[12px] font-medium text-white">{row.location}</p>
               <p className="truncate text-[10px] text-secondary">{row.title}</p>
             </div>
-            <p className="w-[110px] text-right text-[13px] font-bold text-dash-mlx">
+            <p className="w-[110px] text-right text-[13px] font-bold text-primary">
               {row.points.toLocaleString()}
             </p>
             <div className="flex w-[140px] items-center gap-1.5">
-              <div className="h-3 w-[18px] shrink-0 rounded-sm bg-white/10" />
+              <Crest compact label={row.topTeam} className="h-3 w-[18px] shrink-0 rounded-sm" />
               <p className="truncate text-[12px] text-white">{row.topTeam}</p>
             </div>
             <div className="flex w-[60px] items-center justify-center text-[14px]">
               {row.trend === 'up' ? (
-                <span className="text-dash-mlx">▲</span>
+                <span className="text-primary">▲</span>
               ) : (
                 <span className="text-dash-live">▼</span>
               )}
@@ -81,7 +82,7 @@ export default function StandingsTable({ teams, variant = 'teams', rows }) {
               {rank}
             </p>
             <Link to={`/teams/${team.id}`} className="flex flex-1 items-center gap-3">
-              <div className="size-6 shrink-0 rounded-full bg-white/10" />
+              <Crest label={team.name} className="size-6 rounded-full" textClassName="text-[9px]" />
               <p className="text-[13px] font-semibold text-white">{team.name}</p>
             </Link>
             <p className="w-10 text-center text-[13px] text-white">{team.wins}</p>

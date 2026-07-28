@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import VideoPlayer from '../components/VideoPlayer'
 import CommentThread from '../components/CommentThread'
+import Crest from '../components/Crest'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -102,7 +103,7 @@ export default function MatchDetail() {
             <div className="flex items-center justify-between px-10">
               <div className="flex w-[180px] items-center gap-3">
                 <p className="truncate text-[22px] font-extrabold text-white">{match.home}</p>
-                <span className="size-4 shrink-0 rounded-full bg-white/10" />
+                <Crest compact label={match.home} className="size-4 rounded-full" />
               </div>
               <div className="shrink-0 rounded-lg bg-dash-sidebar px-4 py-1.5">
                 <p className="text-[32px] font-extrabold text-primary">
@@ -110,7 +111,7 @@ export default function MatchDetail() {
                 </p>
               </div>
               <div className="flex w-[180px] items-center justify-end gap-3">
-                <span className="size-4 shrink-0 rounded-full bg-white/10" />
+                <Crest compact label={match.away} className="size-4 rounded-full" />
                 <p className="truncate text-[22px] font-extrabold text-white">{match.away}</p>
               </div>
             </div>

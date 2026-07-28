@@ -40,14 +40,28 @@ export default function Discover() {
 
   const { searchTerm, setSearchTerm, activeGroup, setActiveGroup, filteredTeams } = useTeamSearch(teams)
   const [followedTeams, setFollowedTeams] = useState([])
+  const [followsLoading, setFollowsLoading] = useState(true)
+  const [followsLoadError, setFollowsLoadError] = useState(null)
   const [followError, setFollowError] = useState(null)
 
   useEffect(() => {
-    if (!userId) return
+    if (!userId) {
+      setFollowsLoading(false)
+      return
+    }
+    setFollowsLoading(true)
+    setFollowsLoadError(null)
     fetch(`${API_URL}/api/follows/user/${userId}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load followed teams')
+        return res.json()
+      })
       .then(setFollowedTeams)
-      .catch((err) => console.error('Failed to load followed teams', err))
+      .catch((err) => {
+        console.error('Failed to load followed teams', err)
+        setFollowsLoadError('Could not load your followed teams — follow status may be out of date.')
+      })
+      .finally(() => setFollowsLoading(false))
   }, [userId])
 
   async function handleToggleFollow(team) {
@@ -142,6 +156,7 @@ export default function Discover() {
           <p className="text-[18px] font-bold text-white">Top Featured Teams</p>
           <p className="text-[13px] font-semibold text-primary">SEE ALL</p>
         </div>
+        {followsLoadError && <p className="text-[12px] text-dash-live">{followsLoadError}</p>}
         {followError && <p className="text-[12px] text-dash-live">{followError}</p>}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {filteredTeams.map((team) => (

@@ -31,8 +31,8 @@ export default function Leaderboard() {
         </div>
 
         {/* Mechanics banner */}
-        <div className="flex flex-col gap-4 rounded-2xl border border-dash-mlx bg-dashboard p-5">
-          <p className="text-[16px] font-bold text-dash-mlx">How To Earn Points &amp; Climb</p>
+        <div className="flex flex-col gap-4 rounded-2xl border border-primary bg-dashboard p-5">
+          <p className="text-[16px] font-bold text-primary">How To Earn Points &amp; Climb</p>
           <div className="flex gap-5">
             {steps.map((step) => (
               <div key={step.title} className="flex flex-1 flex-col gap-1.5">
@@ -45,16 +45,16 @@ export default function Leaderboard() {
 
         {/* Your stats */}
         <div className="flex items-center gap-6 rounded-2xl border border-dash bg-dashboard p-5">
-          <div className="flex size-[70px] shrink-0 items-center justify-center rounded-full border-2 border-dash-mlx bg-dash-mlx/10">
-            <p className="text-[20px] font-extrabold text-dash-mlx">#47</p>
+          <div className="flex size-[70px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-primary/10">
+            <p className="text-[20px] font-extrabold text-primary">#47</p>
           </div>
           <div className="flex flex-1 flex-col gap-2">
             <div className="flex items-center justify-between">
               <p className="text-[15px] font-bold text-white">Your Predictions Progress</p>
-              <p className="text-[14px] font-semibold text-dash-mlx">8,230 pts</p>
+              <p className="text-[14px] font-semibold text-primary">8,230 pts</p>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-dash-input">
-              <div className="h-full w-[47%] rounded-full bg-dash-mlx" />
+              <div className="h-full w-[47%] rounded-full bg-primary" />
             </div>
             <p className="text-[11px] text-secondary">
               Top Earning Team: <span className="font-bold text-white">Arsenal</span>
@@ -69,14 +69,14 @@ export default function Leaderboard() {
       {/* Right sidebar */}
       <aside className="flex w-[320px] shrink-0 flex-col gap-5 rounded-2xl border border-dash bg-dash-sidebar p-6">
         <div className="flex flex-col gap-3 rounded-xl border border-dash bg-dashboard p-4">
-          <p className="text-[13px] font-bold uppercase text-dash-mlx">🔥 Recent Top Earners</p>
+          <p className="text-[13px] font-bold uppercase text-primary">🔥 Recent Top Earners</p>
           <div className="flex flex-col">
             {recentTopEarners.map((earner, index) => (
               <div key={earner.username}>
                 {index > 0 && <div className="my-2.5 h-px w-full bg-dash" />}
                 <p className="text-[12px] font-semibold text-white">{earner.username}</p>
                 <p className="text-[11px] text-secondary">
-                  Won <span className="font-bold text-dash-mlx">{earner.result}</span> {earner.match}
+                  Won <span className="font-bold text-primary">{earner.result}</span> {earner.match}
                 </p>
               </div>
             ))}
@@ -89,7 +89,7 @@ export default function Leaderboard() {
             {predictionHistory.map((entry) => (
               <div key={entry.matchup} className="flex items-center justify-between">
                 <p className="text-[12px] font-medium text-white">{entry.matchup}</p>
-                <p className={`text-[11px] font-bold ${entry.won ? 'text-dash-mlx' : 'text-dash-live'}`}>
+                <p className={`text-[11px] font-bold ${entry.won ? 'text-primary' : 'text-dash-live'}`}>
                   {entry.result}
                 </p>
               </div>
@@ -99,7 +99,7 @@ export default function Leaderboard() {
 
         <button
           type="button"
-          className="rounded-lg bg-dash-mlx p-3.5 text-[13px] font-bold uppercase text-dash-sidebar"
+          className="rounded-lg bg-primary p-3.5 text-[13px] font-bold uppercase text-dash-sidebar"
         >
           Submit Prediction
         </button>

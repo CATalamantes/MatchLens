@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useSessionUser } from '../../hooks/useSessionUser'
 import AuthAPI from '../../services/AuthAPI'
+import Avatar from '../Avatar'
+import Crest from '../Crest'
+import Skeleton from '../Skeleton'
+import ballMark from '../../assets/ball.png'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -70,13 +74,27 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const user = useSessionUser()
   const [followedTeams, setFollowedTeams] = useState([])
+  const [followsLoading, setFollowsLoading] = useState(true)
+  const [followsError, setFollowsError] = useState(null)
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id) {
+      setFollowsLoading(false)
+      return
+    }
+    setFollowsLoading(true)
+    setFollowsError(null)
     fetch(`${API_URL}/api/follows/user/${user.id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load followed teams')
+        return res.json()
+      })
       .then(setFollowedTeams)
-      .catch((err) => console.error('Failed to load followed teams', err))
+      .catch((err) => {
+        console.error('Failed to load followed teams', err)
+        setFollowsError('Could not load followed teams.')
+      })
+      .finally(() => setFollowsLoading(false))
   }, [user?.id])
 
   // AuthAPI.logout clears localStorage itself. The server also has to destroy
@@ -94,7 +112,7 @@ export default function Sidebar() {
     <div className="flex min-h-screen bg-dashboard">
       <aside className="flex w-[220px] shrink-0 flex-col gap-7 border-r border-dash bg-dash-sidebar p-5">
         <div className="flex items-center gap-2">
-          <div className="size-7 shrink-0 rounded-full bg-primary" />
+          <img src={ballMark} alt="" className="size-7 shrink-0" />
           <p className="whitespace-nowrap text-[18px] font-bold text-white">
             Match<span className="text-primary">L</span>ens
           </p>
@@ -133,13 +151,25 @@ export default function Sidebar() {
         <div className="flex flex-col gap-3">
           <p className="text-[11px] font-bold uppercase text-secondary">Followed Teams</p>
           <div className="flex flex-col gap-2.5">
-            {followedTeams.map((team) => (
-              <div key={team.followed_team_id} className="flex items-center gap-3">
-                <div className="size-5 shrink-0 rounded bg-white/10" />
-                <p className="text-[13px] font-medium text-white">{team.team_name}</p>
-              </div>
-            ))}
-            {followedTeams.length === 0 && (
+            {followsLoading &&
+              [0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="size-5 shrink-0 rounded" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              ))}
+            {!followsLoading && followsError && (
+              <p className="text-[12px] text-dash-live">{followsError}</p>
+            )}
+            {!followsLoading &&
+              !followsError &&
+              followedTeams.map((team) => (
+                <div key={team.followed_team_id} className="flex items-center gap-3">
+                  <Crest compact label={team.team_name} className="size-5 shrink-0 rounded" />
+                  <p className="text-[13px] font-medium text-white">{team.team_name}</p>
+                </div>
+              ))}
+            {!followsLoading && !followsError && followedTeams.length === 0 && (
               <p className="text-[12px] text-secondary">No teams followed yet.</p>
             )}
           </div>
@@ -154,9 +184,11 @@ export default function Sidebar() {
               }`
             }
           >
-            <div
-              className="size-7 shrink-0 rounded-full bg-white/10 bg-cover bg-center"
-              style={user?.profile_image_url ? { backgroundImage: `url(${user.profile_image_url})` } : undefined}
+            <Avatar
+              name={user?.username}
+              src={user?.profile_image_url}
+              className="size-7 shrink-0 rounded-full"
+              textClassName="text-[10px]"
             />
             <p className="truncate text-[13px] font-semibold">{user?.username ?? 'Profile'}</p>
           </NavLink>

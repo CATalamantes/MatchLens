@@ -1,13 +1,9 @@
-import React from 'react'
-
 // Inline rather than an icon package — it's the only icon the app needs, and
 // currentColor lets it inherit the button's text colour on hover.
 const GitHubMark = () => (
     <svg
-        className='login-oauth-gh'
+        className='size-[18px] shrink-0'
         viewBox='0 0 16 16'
-        width='18'
-        height='18'
         fill='currentColor'
         aria-hidden='true'
     >

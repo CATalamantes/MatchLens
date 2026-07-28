@@ -43,7 +43,6 @@ export default {
         'dash-live': '#EF4444',
         'dash-neutral': '#3A3C42',
         'dash-away': '#218AF3',
-        'dash-mlx': '#4FFF62',
         'dash-gold': '#FFD700',
       },
       fontSize: {
