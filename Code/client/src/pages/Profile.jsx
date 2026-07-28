@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useSessionUser } from '../hooks/useSessionUser'
 import { teams as followableTeams } from '../mocks/teams'
-
-// No login/session exists yet — stand-in for "the logged-in user" until
-// real auth lands. Every real API call on this page targets this id.
-const DEMO_USER_ID = 1
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 
-const BIO_STORAGE_KEY = `matchlens:bio:${DEMO_USER_ID}`
 const DEFAULT_BIO = 'Tactical obsession. Data-driven insights. World Cup 2026 prediction specialist.'
 
 // Decorative only — no transactions table or trend data exists anywhere
@@ -44,6 +40,9 @@ function ToggleSwitch({ checked, onChange }) {
 }
 
 export default function Profile() {
+  const sessionUser = useSessionUser()
+  const userId = sessionUser?.id
+
   const [user, setUser] = useState(null)
   const [followedTeams, setFollowedTeams] = useState([])
   const [followError, setFollowError] = useState(null)
@@ -53,7 +52,7 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
-  const [bio, setBio] = useState(() => localStorage.getItem(BIO_STORAGE_KEY) ?? DEFAULT_BIO)
+  const [bio, setBio] = useState(() => localStorage.getItem(`matchlens:bio:${userId}`) ?? DEFAULT_BIO)
   const [bioDraft, setBioDraft] = useState(bio)
 
   const [notifPrefs, setNotifPrefs] = useState({
@@ -70,16 +69,21 @@ export default function Profile() {
   })
 
   useEffect(() => {
-    fetch(`${API_URL}/api/users/${DEMO_USER_ID}`)
+    if (!userId) return
+
+    fetch(`${API_URL}/api/users/${userId}`)
       .then((res) => res.json())
-      .then(setUser)
+      .then((data) => {
+        setUser(data)
+        setAvatarUrl(data.profile_image_url)
+      })
       .catch((err) => console.error('Failed to load user', err))
 
-    fetch(`${API_URL}/api/follows/user/${DEMO_USER_ID}`)
+    fetch(`${API_URL}/api/follows/user/${userId}`)
       .then((res) => res.json())
       .then(setFollowedTeams)
       .catch((err) => console.error('Failed to load followed teams', err))
-  }, [])
+  }, [userId])
 
   async function handleAvatarChange(event) {
     const file = event.target.files?.[0]
@@ -105,17 +109,20 @@ export default function Profile() {
       )
       if (!uploadRes.ok) throw new Error('Cloudinary upload failed')
       const uploadData = await uploadRes.json()
-
-      // getUserById/updateUser never return profile_image_url (see plan
-      // notes) — use the URL Cloudinary gave us directly instead of
-      // trying to re-fetch it from the API.
       setAvatarUrl(uploadData.secure_url)
 
-      await fetch(`${API_URL}/api/users/${DEMO_USER_ID}`, {
+      const patchRes = await fetch(`${API_URL}/api/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile_image_url: uploadData.secure_url }),
       })
+      if (!patchRes.ok) throw new Error('Failed to save avatar')
+      const updatedUser = await patchRes.json()
+      setUser(updatedUser)
+
+      // Keep the Sidebar's avatar (read from this hint) in sync without
+      // waiting for the next full session check.
+      localStorage.setItem('matchlens_user', JSON.stringify({ ...sessionUser, ...updatedUser }))
     } catch (err) {
       setUploadError('Upload failed. Please try again.')
     } finally {
@@ -125,7 +132,7 @@ export default function Profile() {
 
   function handleSaveBio() {
     setBio(bioDraft)
-    localStorage.setItem(BIO_STORAGE_KEY, bioDraft)
+    localStorage.setItem(`matchlens:bio:${userId}`, bioDraft)
     setIsEditingProfile(false)
   }
 
@@ -135,7 +142,7 @@ export default function Profile() {
       const res = await fetch(`${API_URL}/api/follows`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: DEMO_USER_ID, api_team_id: team.api_team_id, team_name: team.name }),
+        body: JSON.stringify({ user_id: userId, api_team_id: team.api_team_id, team_name: team.name }),
       })
       if (!res.ok) throw new Error('Follow failed')
       const created = await res.json()

@@ -4,16 +4,13 @@ import MatchCard from '../components/MatchCard'
 import PlayerCard from '../components/PlayerCard'
 import StandingsTable from '../components/StandingsTable'
 import StatBar from '../components/StatBar'
+import { useSessionUser } from '../hooks/useSessionUser'
 import { knockoutBracket, matchStatistics } from '../mocks/dashboardMocks'
 
 // Falls back to a relative path (same-origin) when unset, so requests
 // still work via the Vite proxy in dev and the Express static server in
 // prod without ever hardcoding a host.
 const API_URL = import.meta.env.VITE_API_URL ?? ''
-
-// No login/session exists yet — stand-in for "the logged-in user" until
-// real auth lands, same placeholder used on the Profile page.
-const DEMO_USER_ID = 1
 
 function getCountdown(dateString, now) {
   const diff = Math.max(0, new Date(dateString).getTime() - now)
@@ -48,6 +45,7 @@ function BracketMatch({ home, away, highlight }) {
 }
 
 export default function Home() {
+  const sessionUser = useSessionUser()
   const [matches, setMatches] = useState([])
   const [teams, setTeams] = useState([])
   const [topScorers, setTopScorers] = useState([])
@@ -70,11 +68,12 @@ export default function Home() {
       .then((players) => setTopScorers(players.slice(0, 3)))
       .catch((err) => console.error('Failed to load players', err))
 
-    fetch(`${API_URL}/api/users/${DEMO_USER_ID}`)
+    if (!sessionUser?.id) return
+    fetch(`${API_URL}/api/users/${sessionUser.id}`)
       .then((res) => res.json())
       .then(setUser)
       .catch((err) => console.error('Failed to load user', err))
-  }, [])
+  }, [sessionUser?.id])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000)
@@ -82,7 +81,7 @@ export default function Home() {
   }, [])
 
   const upcomingMatch = matches.find((m) => m.status === 'UPCOMING')
-  const liveMatch = matches.find((m) => m.status === 'LIVE')
+  const liveMatch = matches.find((m) => m.status === 'LIVE' || m.status === 'HT')
   const countdown = upcomingMatch ? getCountdown(upcomingMatch.date, now) : null
 
   return (
@@ -204,7 +203,11 @@ export default function Home() {
             <span className="size-2 shrink-0 rounded-full bg-dash-live" />
             <p className="text-[14px] font-bold text-white">Live Match</p>
           </div>
-          {liveMatch && <p className="text-[12px] font-semibold text-primary">{liveMatch.minute}'</p>}
+          {liveMatch && (
+            <p className="text-[12px] font-semibold text-primary">
+              {liveMatch.status === 'HT' ? 'HT' : `${liveMatch.minute}'`}
+            </p>
+          )}
         </div>
 
         {liveMatch ? (
