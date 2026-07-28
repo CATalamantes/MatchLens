@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import MatchCard from '../components/MatchCard'
 import PlayerCard from '../components/PlayerCard'
 import StandingsTable from '../components/StandingsTable'
 import StatBar from '../components/StatBar'
 import Crest from '../components/Crest'
 import Skeleton from '../components/Skeleton'
 import { useSessionUser } from '../hooks/useSessionUser'
-import { knockoutBracket, matchStatistics } from '../mocks/dashboardMocks'
+import { matchStatistics } from '../mocks/dashboardMocks'
+import wcBracket from '../assets/wc_bracket.webp'
 
 // Falls back to a relative path (same-origin) when unset, so requests
 // still work via the Vite proxy in dev and the Express static server in
@@ -33,19 +33,6 @@ function TimeUnit({ value, label }) {
   )
 }
 
-function BracketMatch({ home, away, highlight }) {
-  return (
-    <div
-      className={`flex w-[120px] flex-col gap-1 rounded-md p-2 text-[11px] ${
-        highlight ? 'border border-primary bg-primary/10' : 'bg-dash-sidebar'
-      }`}
-    >
-      <p className={`font-semibold ${highlight ? 'text-primary' : 'text-white'}`}>{home}</p>
-      <p className={highlight ? 'text-white' : 'text-secondary'}>{away}</p>
-    </div>
-  )
-}
-
 async function fetchJson(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Request to ${url} failed`)
@@ -62,6 +49,7 @@ export default function Home() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [standingsExpanded, setStandingsExpanded] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -108,6 +96,9 @@ export default function Home() {
   const upcomingMatch = matches.find((m) => m.status === 'UPCOMING')
   const liveMatch = matches.find((m) => m.status === 'LIVE' || m.status === 'HT')
   const countdown = upcomingMatch ? getCountdown(upcomingMatch.date, now) : null
+
+  const sortedTeams = [...teams].sort((a, b) => b.points - a.points)
+  const visibleTeams = standingsExpanded ? sortedTeams : sortedTeams.slice(0, 10)
 
   if (error) {
     return (
@@ -165,70 +156,19 @@ export default function Home() {
           </div>
         )}
 
-        {/* Match ticker */}
+        {/* World Cup 2026 knockout bracket */}
         <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex gap-6 text-[13px]">
-              <p className="text-white">Latest Match</p>
-              <p className="text-secondary">Coming Match</p>
-              <p className="text-secondary">Pre-season</p>
-              <p className="text-secondary">Live Games</p>
-            </div>
-            <p className="text-[11px] font-bold text-primary">SEE ALL</p>
-          </div>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-[124px] w-full rounded-xl" />
-              ))}
-            </div>
-          ) : matches.length === 0 ? (
-            <p className="text-[13px] text-secondary">No matches scheduled right now.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {matches.map((match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Knockout bracket */}
-        <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-          <h2 className="text-[16px] font-bold text-white">🏆 World Cup 2026 Knockout Bracket</h2>
-          <div className="flex items-center justify-between gap-4 overflow-x-auto py-2">
-            <div className="flex flex-col gap-6">
-              {knockoutBracket.quarterLeft.map((m, i) => (
-                <BracketMatch key={i} home={m.home} away={m.away} />
-              ))}
-            </div>
-            <div className="h-px w-8 shrink-0 bg-dash" />
-            <BracketMatch home={knockoutBracket.semiLeft.home} away={knockoutBracket.semiLeft.away} highlight />
-            <div className="flex shrink-0 flex-col items-center gap-3">
-              <p className="text-[10px] font-bold uppercase text-primary">Grand Final</p>
-              <div className="flex w-[160px] flex-col items-center gap-2 rounded-lg border-2 border-primary bg-black p-3 text-center">
-                <p className="text-[12px] font-bold text-white">
-                  {knockoutBracket.final.home} vs {knockoutBracket.final.away}
-                </p>
-                <p className="text-[10px] text-secondary">{knockoutBracket.final.venue}</p>
-              </div>
-            </div>
-            <BracketMatch home={knockoutBracket.semiRight.home} away={knockoutBracket.semiRight.away} highlight />
-            <div className="h-px w-8 shrink-0 bg-dash" />
-            <div className="flex flex-col gap-6">
-              {knockoutBracket.quarterRight.map((m, i) => (
-                <BracketMatch key={i} home={m.home} away={m.away} />
-              ))}
-            </div>
-          </div>
+          <h2 className="text-[20px] font-bold text-white">The Culmination of Football</h2>
+          <img
+            src={wcBracket}
+            alt="FIFA World Cup 2026 knockout bracket results"
+            className="w-full rounded-2xl border border-dash"
+          />
         </section>
 
         {/* Standings */}
         <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[16px] font-bold text-white">🔥 Standings</h2>
-            <p className="text-[12px] font-semibold text-secondary">MATCHDAY 24</p>
-          </div>
+          <h2 className="text-[16px] font-bold text-white">Standings</h2>
           {loading ? (
             <div className="flex flex-col gap-2">
               {[0, 1, 2].map((i) => (
@@ -238,13 +178,24 @@ export default function Home() {
           ) : teams.length === 0 ? (
             <p className="text-[13px] text-secondary">No standings available right now.</p>
           ) : (
-            <StandingsTable teams={teams} />
+            <>
+              <StandingsTable teams={visibleTeams} />
+              {sortedTeams.length > 10 && (
+                <button
+                  type="button"
+                  onClick={() => setStandingsExpanded((prev) => !prev)}
+                  className="w-fit self-center text-[12px] font-semibold text-primary"
+                >
+                  {standingsExpanded ? 'Show less' : `Load more (${sortedTeams.length - 10} more teams)`}
+                </button>
+              )}
+            </>
           )}
         </section>
 
         {/* Top scorers */}
         <section className="flex flex-col gap-4">
-          <h2 className="text-[16px] font-bold text-white">⚽ Top Scorers</h2>
+          <h2 className="text-[16px] font-bold text-white">Top Scorers</h2>
           {loading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[0, 1, 2].map((i) => (
@@ -312,7 +263,7 @@ export default function Home() {
         <div className="h-px w-full bg-dash" />
 
         <div className="flex flex-col gap-2 rounded-xl border border-primary bg-primary/10 p-4">
-          <p className="text-[13px] font-bold text-primary">⚡ Leaderboard Surge</p>
+          <p className="text-[13px] font-bold text-primary">Leaderboard Surge</p>
           <p className="text-[12px] text-white">Your predictions are paying off. Top 5% this week.</p>
         </div>
 
