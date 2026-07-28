@@ -24,11 +24,14 @@ export const demoUsers = [
     },
 ];
 
+// api_team_id values are real API-Football team IDs from the World Cup
+// (league 1, season 2022) — must match what GET /api/teams/:id resolves,
+// not arbitrary placeholders.
 export const demoFollowedTeams = [
-    { user_id: 1, api_team_id: "1", team_name: "Liverpool" },
-    { user_id: 1, api_team_id: "3", team_name: "Man City" },
-    { user_id: 2, api_team_id: "2", team_name: "Arsenal" },
-    { user_id: 3, api_team_id: "1", team_name: "Liverpool" },
+    { user_id: 1, api_team_id: "26", team_name: "Argentina" },
+    { user_id: 1, api_team_id: "2", team_name: "France" },
+    { user_id: 2, api_team_id: "6", team_name: "Brazil" },
+    { user_id: 3, api_team_id: "10", team_name: "England" },
 ];
 
 export const demoComments = [
@@ -76,17 +79,17 @@ export const demoPredictions = [
 export const demoNotifications = [
     {
         user_id: 1,
-        api_team_id: "1",
+        api_team_id: "26",
         api_match_id: null,
         notification_type: "match_alert",
-        message: "Liverpool kicks off in 1 hour!",
+        message: "Argentina kicks off in 1 hour!",
     },
     {
         user_id: 2,
-        api_team_id: "2",
+        api_team_id: "6",
         api_match_id: null,
         notification_type: "transfer_news",
-        message: "Arsenal announced a new signing.",
+        message: "Brazil announced a squad update.",
     },
 ];
 

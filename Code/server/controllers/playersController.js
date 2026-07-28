@@ -1,8 +1,8 @@
 import { footballApiGet } from "../config/footballApi.js";
 
-const LEAGUE_ID = 39;
+const LEAGUE_ID = 1; // FIFA World Cup
 // Free-tier API-Football plans only cover seasons 2022-2024, not the current one.
-const SEASON = 2024;
+const SEASON = 2022;
 
 function mapPlayer(entry) {
   const stats = entry.statistics[0];
