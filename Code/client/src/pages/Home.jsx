@@ -3,48 +3,13 @@ import { Link } from 'react-router-dom'
 import MatchCard from '../components/MatchCard'
 import PlayerCard from '../components/PlayerCard'
 import StandingsTable from '../components/StandingsTable'
-import StatBar from '../components/StatBar'
+import TournamentBracket from '../components/TournamentBracket'
 import Crest from '../components/Crest'
 import Skeleton from '../components/Skeleton'
 import { useSessionUser } from '../hooks/useSessionUser'
-import { knockoutBracket, matchStatistics } from '../mocks/dashboardMocks'
-
-// Falls back to a relative path (same-origin) when unset, so requests
-// still work via the Vite proxy in dev and the Express static server in
-// prod without ever hardcoding a host.
-const API_URL = import.meta.env.VITE_API_URL ?? ''
-
-function getCountdown(dateString, now) {
-  const diff = Math.max(0, new Date(dateString).getTime() - now)
-  return {
-    days: Math.floor(diff / 86400000),
-    hours: Math.floor((diff % 86400000) / 3600000),
-    minutes: Math.floor((diff % 3600000) / 60000),
-    seconds: Math.floor((diff % 60000) / 1000),
-  }
-}
-
-function TimeUnit({ value, label }) {
-  return (
-    <div className="flex w-12 flex-col items-center">
-      <p className="text-[18px] font-bold text-white">{String(value).padStart(2, '0')}</p>
-      <p className="text-[9px] text-secondary">{label}</p>
-    </div>
-  )
-}
-
-function BracketMatch({ home, away, highlight }) {
-  return (
-    <div
-      className={`flex w-[120px] flex-col gap-1 rounded-md p-2 text-[11px] ${
-        highlight ? 'border border-primary bg-primary/10' : 'bg-dash-sidebar'
-      }`}
-    >
-      <p className={`font-semibold ${highlight ? 'text-primary' : 'text-white'}`}>{home}</p>
-      <p className={highlight ? 'text-white' : 'text-secondary'}>{away}</p>
-    </div>
-  )
-}
+import { useFollows } from '../hooks/useFollows'
+import { API_URL } from '../config/api'
+import { isFinished } from '../utilities/matchStatus'
 
 async function fetchJson(url) {
   const res = await fetch(url)
@@ -54,35 +19,41 @@ async function fetchJson(url) {
 
 export default function Home() {
   const sessionUser = useSessionUser()
-  const [matches, setMatches] = useState([])
+  const { follows } = useFollows()
   const [teams, setTeams] = useState([])
   const [topScorers, setTopScorers] = useState([])
+  const [bracket, setBracket] = useState([])
   const [user, setUser] = useState(null)
-  const [now, setNow] = useState(Date.now())
 
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  // Per-section errors instead of one page-level flag: a single failing
+  // endpoint used to blank the entire dashboard, which is what made this page
+  // look broken even when most of its data had loaded fine.
+  const [errors, setErrors] = useState({})
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError(null)
 
-    Promise.all([
-      fetchJson(`${API_URL}/api/matches`),
+    Promise.allSettled([
       fetchJson(`${API_URL}/api/teams`),
       fetchJson(`${API_URL}/api/players?sort=goals`),
+      fetchJson(`${API_URL}/api/matches/bracket`),
     ])
-      .then(([matchesData, teamsData, playersData]) => {
+      .then(([teamsRes, playersRes, bracketRes]) => {
         if (cancelled) return
-        setMatches(matchesData)
-        setTeams(teamsData)
-        setTopScorers(playersData.slice(0, 3))
-      })
-      .catch((err) => {
-        if (cancelled) return
-        console.error('Failed to load dashboard data', err)
-        setError('Could not load dashboard data. Please try again.')
+        const next = {}
+
+        if (teamsRes.status === 'fulfilled') setTeams(teamsRes.value)
+        else next.teams = 'Standings are unavailable right now.'
+
+        if (playersRes.status === 'fulfilled') setTopScorers(playersRes.value.slice(0, 3))
+        else next.players = 'Player stats are unavailable right now.'
+
+        if (bracketRes.status === 'fulfilled') setBracket(bracketRes.value)
+        else next.bracket = 'The bracket is unavailable right now.'
+
+        setErrors(next)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -100,158 +71,135 @@ export default function Home() {
       .catch((err) => console.error('Failed to load user', err))
   }, [sessionUser?.id])
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(interval)
-  }, [])
+  const final = bracket.find((r) => r.round === 'Final')?.matches?.[0]
+  const champion = final?.home_winner ? final.home : final?.away_winner ? final.away : null
+  const championLogo = final?.home_winner ? final.home_logo : final?.away_logo
 
-  const upcomingMatch = matches.find((m) => m.status === 'UPCOMING')
-  const liveMatch = matches.find((m) => m.status === 'LIVE' || m.status === 'HT')
-  const countdown = upcomingMatch ? getCountdown(upcomingMatch.date, now) : null
+  // Followed teams matched against the standings, so the Home block shows real
+  // league position rather than just a list of names.
+  const followedRows = teams.filter((team) =>
+    follows.some((f) => String(f.api_team_id) === String(team.id)),
+  )
 
-  if (error) {
-    return (
-      <div className="p-6">
-        <p className="text-[13px] text-dash-live">{error}</p>
-      </div>
-    )
-  }
+  // 32 teams arrive as one flat list; the group label is what turns them back
+  // into the eight tables a World Cup actually has.
+  const groups = teams.reduce((acc, team) => {
+    const key = team.group ?? 'Standings'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(team)
+    return acc
+  }, {})
 
   return (
     <div className="flex gap-6 p-6">
-      <div className="flex flex-1 flex-col gap-6">
-        {/* Hero */}
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
+        {/* Hero — the tournament is complete, so it leads with the result */}
         {loading ? (
           <Skeleton className="h-[136px] w-full rounded-2xl" />
         ) : (
           <div className="relative overflow-hidden rounded-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
             <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
-              <div className="flex max-w-[400px] flex-col gap-2">
-                <span className="inline-flex w-fit items-center rounded bg-dash-live px-2 py-1 text-[10px] font-bold text-white">
-                  {upcomingMatch ? 'UPCOMING MAJOR' : 'NO UPCOMING MATCH'}
+              <div className="flex max-w-[440px] flex-col gap-2">
+                <span className="inline-flex w-fit items-center rounded bg-primary px-2 py-1 text-[10px] font-bold text-black">
+                  FIFA WORLD CUP 2022
                 </span>
-                {upcomingMatch ? (
+                {final ? (
                   <>
                     <h1 className="text-[24px] font-extrabold text-white">
-                      {upcomingMatch.home} vs {upcomingMatch.away}
+                      {final.home} {final.home_score}–{final.away_score} {final.away}
                     </h1>
                     <p className="text-[13px] text-primary">
-                      {new Date(upcomingMatch.date).toLocaleDateString('en-GB', {
-                        weekday: 'long',
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}{' '}
-                      • {upcomingMatch.venue}
+                      Final · {final.venue}
+                      {final.score_penalty?.home != null &&
+                        ` · ${final.score_penalty.home}–${final.score_penalty.away} on penalties`}
                     </p>
                   </>
                 ) : (
-                  <p className="text-[13px] text-secondary">Check back soon for the next fixture.</p>
+                  <p className="text-[13px] text-secondary">Tournament data is loading.</p>
                 )}
               </div>
-              {upcomingMatch && countdown && (
-                <div className="flex items-center gap-3 rounded-xl bg-black/30 p-3">
-                  <TimeUnit value={countdown.days} label="Days" />
-                  <span className="text-[14px] text-secondary">:</span>
-                  <TimeUnit value={countdown.hours} label="Hours" />
-                  <span className="text-[14px] text-secondary">:</span>
-                  <TimeUnit value={countdown.minutes} label="Min" />
-                  <span className="text-[14px] text-secondary">:</span>
-                  <TimeUnit value={countdown.seconds} label="Sec" />
+
+              {champion && (
+                <div className="flex items-center gap-3 rounded-xl bg-black/30 p-4">
+                  <Crest label={champion} logo={championLogo} className="size-12" />
+                  <div className="flex flex-col">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-secondary">Champions</p>
+                    <p className="text-[18px] font-extrabold text-white">{champion}</p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Match ticker */}
-        <section className="flex flex-col gap-4">
+        {/* Tournament Path */}
+        <section className="flex min-w-0 flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
+          <h2 className="text-[16px] font-bold text-white">🏆 Tournament Path</h2>
+
+          {errors.bracket && <p className="text-[13px] text-dash-live">{errors.bracket}</p>}
+          {loading && <Skeleton className="h-[240px] w-full rounded-xl" />}
+
+          {!loading && !errors.bracket && <TournamentBracket rounds={bracket} />}
+        </section>
+
+        {/* Your Followed Teams — the wireframe's standings block, narrowed to
+            the teams this user actually follows. */}
+        <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
           <div className="flex items-center justify-between">
-            <div className="flex gap-6 text-[13px]">
-              <p className="text-white">Latest Match</p>
-              <p className="text-secondary">Coming Match</p>
-              <p className="text-secondary">Pre-season</p>
-              <p className="text-secondary">Live Games</p>
-            </div>
-            <p className="text-[11px] font-bold text-primary">SEE ALL</p>
+            <h2 className="text-[16px] font-bold text-white">⭐ Your Followed Teams</h2>
+            <Link to="/discover" className="text-[11px] font-bold text-primary">
+              FIND TEAMS
+            </Link>
           </div>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-[124px] w-full rounded-xl" />
-              ))}
-            </div>
-          ) : matches.length === 0 ? (
-            <p className="text-[13px] text-secondary">No matches scheduled right now.</p>
+
+          {followedRows.length === 0 ? (
+            <p className="text-[13px] text-secondary">
+              You're not following anyone yet — follow a team and it'll show up here and in the
+              sidebar.
+            </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {matches.map((match) => (
-                <MatchCard key={match.id} match={match} />
-              ))}
-            </div>
+            <StandingsTable teams={followedRows} />
           )}
         </section>
 
-        {/* Knockout bracket */}
+        {/* Group standings */}
         <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-          <h2 className="text-[16px] font-bold text-white">🏆 World Cup 2026 Knockout Bracket</h2>
-          <div className="flex items-center justify-between gap-4 overflow-x-auto py-2">
-            <div className="flex flex-col gap-6">
-              {knockoutBracket.quarterLeft.map((m, i) => (
-                <BracketMatch key={i} home={m.home} away={m.away} />
-              ))}
-            </div>
-            <div className="h-px w-8 shrink-0 bg-dash" />
-            <BracketMatch home={knockoutBracket.semiLeft.home} away={knockoutBracket.semiLeft.away} highlight />
-            <div className="flex shrink-0 flex-col items-center gap-3">
-              <p className="text-[10px] font-bold uppercase text-primary">Grand Final</p>
-              <div className="flex w-[160px] flex-col items-center gap-2 rounded-lg border-2 border-primary bg-black p-3 text-center">
-                <p className="text-[12px] font-bold text-white">
-                  {knockoutBracket.final.home} vs {knockoutBracket.final.away}
-                </p>
-                <p className="text-[10px] text-secondary">{knockoutBracket.final.venue}</p>
-              </div>
-            </div>
-            <BracketMatch home={knockoutBracket.semiRight.home} away={knockoutBracket.semiRight.away} highlight />
-            <div className="h-px w-8 shrink-0 bg-dash" />
-            <div className="flex flex-col gap-6">
-              {knockoutBracket.quarterRight.map((m, i) => (
-                <BracketMatch key={i} home={m.home} away={m.away} />
-              ))}
-            </div>
-          </div>
-        </section>
+          <h2 className="text-[16px] font-bold text-white">🔥 Group Stage Standings</h2>
 
-        {/* Standings */}
-        <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[16px] font-bold text-white">🔥 Standings</h2>
-            <p className="text-[12px] font-semibold text-secondary">MATCHDAY 24</p>
-          </div>
-          {loading ? (
+          {errors.teams && <p className="text-[13px] text-dash-live">{errors.teams}</p>}
+          {loading && (
             <div className="flex flex-col gap-2">
               {[0, 1, 2].map((i) => (
                 <Skeleton key={i} className="h-10 w-full rounded-lg" />
               ))}
             </div>
-          ) : teams.length === 0 ? (
-            <p className="text-[13px] text-secondary">No standings available right now.</p>
-          ) : (
-            <StandingsTable teams={teams} />
           )}
+          {!loading && !errors.teams && teams.length === 0 && (
+            <p className="text-[13px] text-secondary">No standings available right now.</p>
+          )}
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            {Object.entries(groups).map(([group, groupTeams]) => (
+              <div key={group} className="flex flex-col gap-2">
+                <p className="text-[12px] font-bold text-secondary">{group}</p>
+                <StandingsTable teams={groupTeams} />
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Top scorers */}
         <section className="flex flex-col gap-4">
           <h2 className="text-[16px] font-bold text-white">⚽ Top Scorers</h2>
+          {errors.players && <p className="text-[13px] text-dash-live">{errors.players}</p>}
           {loading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[0, 1, 2].map((i) => (
                 <Skeleton key={i} className="h-[220px] w-full rounded-xl" />
               ))}
             </div>
-          ) : topScorers.length === 0 ? (
+          ) : topScorers.length === 0 && !errors.players ? (
             <p className="text-[13px] text-secondary">No player stats available right now.</p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -263,62 +211,31 @@ export default function Home() {
         </section>
       </div>
 
-      {/* Live match widget */}
+      {/* Sidebar */}
       <aside className="flex w-[280px] shrink-0 flex-col gap-6 rounded-2xl border border-dash bg-dash-sidebar p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="size-2 shrink-0 rounded-full bg-dash-live" />
-            <p className="text-[14px] font-bold text-white">Live Match</p>
-          </div>
-          {liveMatch && (
-            <p className="text-[12px] font-semibold text-primary">
-              {liveMatch.status === 'HT' ? 'HT' : `${liveMatch.minute}'`}
-            </p>
-          )}
-        </div>
+        <p className="text-[14px] font-bold text-white">Knockout Results</p>
 
         {loading ? (
           <Skeleton className="h-[92px] w-full rounded-xl" />
-        ) : liveMatch ? (
-          <>
-            <div className="flex items-center justify-center gap-4 rounded-xl border border-dash bg-dashboard p-3">
-              <div className="flex flex-col items-center gap-1.5">
-                <Crest label={liveMatch.home} className="size-9 rounded-full" textClassName="text-[11px]" />
-                <p className="text-[11px] font-semibold text-white">{liveMatch.home}</p>
-              </div>
-              <div className="flex flex-col items-center">
-                <p className="text-[24px] font-extrabold text-primary">
-                  {liveMatch.home_score} - {liveMatch.away_score}
-                </p>
-                <p className="text-[10px] text-secondary">{liveMatch.venue}</p>
-              </div>
-              <div className="flex flex-col items-center gap-1.5">
-                <Crest label={liveMatch.away} className="size-9 rounded-full" textClassName="text-[11px]" />
-                <p className="text-[11px] font-semibold text-white">{liveMatch.away}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <p className="text-[12px] font-bold uppercase text-secondary">Match Statistics</p>
-              {matchStatistics.map((stat) => (
-                <StatBar key={stat.label} {...stat} />
+        ) : final ? (
+          <div className="flex flex-col gap-3">
+            {bracket
+              .filter((r) => r.round === 'Semi-finals' || r.round === 'Final')
+              .flatMap((r) => r.matches)
+              .filter((m) => isFinished(m.status))
+              .map((match) => (
+                <MatchCard key={match.id} match={match} />
               ))}
-            </div>
-          </>
+          </div>
         ) : (
-          <p className="text-[12px] text-secondary">No live match right now.</p>
+          <p className="text-[12px] text-secondary">No results available.</p>
         )}
 
         <div className="h-px w-full bg-dash" />
 
-        <div className="flex flex-col gap-2 rounded-xl border border-primary bg-primary/10 p-4">
-          <p className="text-[13px] font-bold text-primary">⚡ Leaderboard Surge</p>
-          <p className="text-[12px] text-white">Your predictions are paying off. Top 5% this week.</p>
-        </div>
-
         <div className="flex flex-col gap-3 rounded-xl border border-dash bg-dashboard p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold text-secondary">Points</p>
+            <p className="text-[11px] font-semibold text-secondary">Your Points</p>
             <p className="text-[16px] font-extrabold text-primary">
               {(user?.points ?? 0).toLocaleString()}
             </p>

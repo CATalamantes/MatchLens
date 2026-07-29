@@ -1,22 +1,37 @@
 // Teams come from the external football data API.
 
 import { footballApiGet } from "../config/footballApi.js";
+import { LEAGUE_ID, SEASON } from "../config/competition.js";
 
-const LEAGUE_ID = 39;
-// Free-tier API-Football plans only cover seasons 2022-2024, not the current one.
-const SEASON = 2024;
+function standings() {
+  return footballApiGet(`/standings?league=${LEAGUE_ID}&season=${SEASON}`);
+}
+
+// A league has one table; a World Cup has eight group tables, so `standings`
+// is an array of arrays. Flattening keeps every team reachable — reading only
+// standings[0] would silently limit the whole app to Group A.
+function allStandingRows(data) {
+  const groups = data[0]?.league?.standings ?? [];
+  return groups.flat();
+}
 
 function mapStandingRow(row) {
   return {
     id: row.team.id,
     name: row.team.name,
-    league: "Premier League",
+    logo: row.team.logo,
+    // For a cup this is the group name ("Group A"), which is what the client
+    // needs to render the group tables.
+    group: row.group,
     played: row.all.played,
     wins: row.all.win,
     draws: row.all.draw,
     losses: row.all.lose,
     goals_scored: row.all.goals.for,
+    goals_against: row.all.goals.against,
+    goal_diff: row.goalsDiff,
     points: row.points,
+    form: row.form,
   };
 }
 
@@ -24,10 +39,8 @@ function mapStandingRow(row) {
 export async function getAllTeams(req, res) {
   try {
     const { search } = req.query;
-    const data = await footballApiGet(
-      `/standings?league=${LEAGUE_ID}&season=${SEASON}`,
-    );
-    let teams = data[0].league.standings[0].map(mapStandingRow);
+    const data = await standings();
+    let teams = allStandingRows(data).map(mapStandingRow);
     if (search)
       teams = teams.filter((t) =>
         t.name.toLowerCase().includes(search.toLowerCase()),
@@ -42,12 +55,36 @@ export async function getAllTeams(req, res) {
 export async function getTeamById(req, res) {
   try {
     const id = parseInt(req.params.id);
-    const data = await footballApiGet(
-      `/standings?league=${LEAGUE_ID}&season=${SEASON}`,
-    );
-    const row = data[0].league.standings[0].find((r) => r.team.id === id);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: "Invalid team id" });
+    }
+    const data = await standings();
+    const row = allStandingRows(data).find((r) => r.team.id === id);
     if (!row) return res.status(404).json({ error: "Team not found" });
-    res.status(200).json(mapStandingRow(row));
+
+    // Every fixture this team played, so the profile can show real results
+    // rather than the placeholder schedule it used to render.
+    const fixtures = await footballApiGet(
+      `/fixtures?league=${LEAGUE_ID}&season=${SEASON}&team=${id}`,
+    );
+
+    res.status(200).json({
+      ...mapStandingRow(row),
+      fixtures: fixtures.map((f) => ({
+        id: f.fixture.id,
+        date: f.fixture.date,
+        round: f.league.round,
+        status: f.fixture.status.short,
+        home: f.teams.home.name,
+        home_id: f.teams.home.id,
+        home_logo: f.teams.home.logo,
+        home_score: f.goals.home,
+        away: f.teams.away.name,
+        away_id: f.teams.away.id,
+        away_logo: f.teams.away.logo,
+        away_score: f.goals.away,
+      })),
+    });
   } catch (error) {
     res.status(502).json({ error: error.message });
   }

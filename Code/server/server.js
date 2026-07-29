@@ -22,6 +22,7 @@ import commentsRouter from "./routes/commentsRoutes.js";
 import followsRouter from "./routes/followsRoutes.js";
 import notificationsRouter from "./routes/notificationsRoutes.js";
 import videosRouter from "./routes/videosRoutes.js";
+import searchRouter from "./routes/searchRoutes.js";
 import authRouter from "./routes/auth.js";
 
 const PORT = process.env.PORT || 3000;
@@ -83,6 +84,7 @@ app.use("/api/comments", commentsRouter);
 app.use("/api/follows", followsRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/videos", videosRouter);
+app.use("/api/search", searchRouter);
 
 if (process.env.NODE_ENV === "production") {
     app.get("/*", (_, res) =>

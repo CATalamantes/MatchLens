@@ -1,3 +1,15 @@
+// Every api_team_id / api_match_id below is a REAL API-Football id from the
+// 2022 World Cup, so seeded rows actually line up with what the app fetches.
+// (They used to be placeholders like "101", which matched no real fixture, so
+// every seeded comment and follow was invisible in the UI.)
+//
+//   Teams    — Argentina 26, France 2, Croatia 3, Morocco 31, Brazil 6,
+//              England 10, Portugal 27, Netherlands 1118
+//   Fixtures — Final          979139  Argentina 3-3 France (4-2 pens)
+//              Semi-final     978279  Argentina 3-0 Croatia
+//              Semi-final     978488  France 2-0 Morocco
+//              Quarter-final  977794  Netherlands 2-2 Argentina
+
 // `password` is the plaintext demo credential you log in with — resetDatabase.js
 // bcrypt-hashes it before insert, so nothing plaintext ever reaches the table.
 export const demoUsers = [
@@ -25,83 +37,83 @@ export const demoUsers = [
 ];
 
 export const demoFollowedTeams = [
-    { user_id: 1, api_team_id: "1", team_name: "Liverpool" },
-    { user_id: 1, api_team_id: "3", team_name: "Man City" },
-    { user_id: 2, api_team_id: "2", team_name: "Arsenal" },
-    { user_id: 3, api_team_id: "1", team_name: "Liverpool" },
+    { user_id: 1, api_team_id: "26", team_name: "Argentina" },
+    { user_id: 1, api_team_id: "6", team_name: "Brazil" },
+    { user_id: 2, api_team_id: "2", team_name: "France" },
+    { user_id: 3, api_team_id: "31", team_name: "Morocco" },
 ];
 
 export const demoComments = [
     {
         user_id: 1,
-        api_match_id: "101",
-        content: "What a finish, did not see that coming!",
+        api_match_id: "979139",
+        content: "Messi finally gets his World Cup. What a final.",
     },
     {
         user_id: 2,
-        api_match_id: "101",
-        content: "Ref missed a clear penalty there.",
+        api_match_id: "979139",
+        content: "Mbappé with a hat-trick in a final and still ends up losing.",
     },
     {
         user_id: 3,
-        api_match_id: "102",
-        content: "This defense has been shaky all season.",
+        api_match_id: "978488",
+        content: "Morocco did the whole continent proud this tournament.",
     },
 ];
 
 export const demoPredictions = [
     {
         user_id: 1,
-        api_match_id: "101",
-        predicted_home_score: 2,
-        predicted_away_score: 1,
+        api_match_id: "979139",
+        predicted_home_score: 3,
+        predicted_away_score: 3,
         points_awarded: 50,
     },
     {
         user_id: 2,
-        api_match_id: "101",
+        api_match_id: "979139",
         predicted_home_score: 1,
-        predicted_away_score: 1,
+        predicted_away_score: 2,
         points_awarded: 0,
     },
     {
         user_id: 3,
-        api_match_id: "102",
-        predicted_home_score: 3,
+        api_match_id: "978488",
+        predicted_home_score: 2,
         predicted_away_score: 0,
-        points_awarded: 0,
+        points_awarded: 50,
     },
 ];
 
 export const demoNotifications = [
     {
         user_id: 1,
-        api_team_id: "1",
+        api_team_id: "26",
         api_match_id: null,
         notification_type: "match_alert",
-        message: "Liverpool kicks off in 1 hour!",
+        message: "Argentina kick off the final in 1 hour!",
     },
     {
         user_id: 2,
         api_team_id: "2",
         api_match_id: null,
         notification_type: "transfer_news",
-        message: "Arsenal announced a new signing.",
+        message: "France name their squad for the next window.",
     },
 ];
 
 export const demoVideoLinks = [
     {
         user_id: 1,
-        api_match_id: "101",
-        title: "Match Highlights - Full Time",
+        api_match_id: "979139",
+        title: "Final Highlights - Argentina vs France",
         video_url: "https://youtube.com/watch?v=example1",
         provider: "youtube",
     },
     {
         user_id: 3,
-        api_match_id: "102",
-        title: "Best Saves of the Match",
+        api_match_id: "978488",
+        title: "Best Saves - France vs Morocco",
         video_url: "https://youtube.com/watch?v=example2",
         provider: "youtube",
     },

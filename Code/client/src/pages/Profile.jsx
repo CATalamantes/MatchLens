@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useSessionUser } from '../hooks/useSessionUser'
-import { teams as followableTeams } from '../mocks/teams'
 import Avatar from '../components/Avatar'
 import Crest from '../components/Crest'
 import Skeleton from '../components/Skeleton'
@@ -54,6 +53,7 @@ export default function Profile() {
   const [followsLoadError, setFollowsLoadError] = useState(null)
   const [followError, setFollowError] = useState(null)
   const [showTeamPicker, setShowTeamPicker] = useState(false)
+  const [allTeams, setAllTeams] = useState([])
 
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(null)
@@ -74,6 +74,15 @@ export default function Profile() {
     dataSharing: false,
     showPredictionHistory: true,
   })
+
+  // The follow picker needs the real team list so the ids it writes match the
+  // ones Discover, the standings, and every team link already use.
+  useEffect(() => {
+    fetch(`${API_URL}/api/teams`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setAllTeams)
+      .catch((err) => console.error('Failed to load teams', err))
+  }, [])
 
   useEffect(() => {
     if (!userId) return
@@ -167,7 +176,7 @@ export default function Profile() {
       const res = await fetch(`${API_URL}/api/follows`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId, api_team_id: team.api_team_id, team_name: team.name }),
+        body: JSON.stringify({ user_id: userId, api_team_id: String(team.id), team_name: team.name }),
       })
       if (!res.ok) throw new Error('Follow failed')
       const created = await res.json()
@@ -189,8 +198,10 @@ export default function Profile() {
     }
   }
 
-  const pickableTeams = followableTeams.filter(
-    (team) => !followedTeams.some((followed) => String(followed.api_team_id) === String(team.api_team_id)),
+  // Teams come from the API rather than a mock list, so the ids used to follow
+  // match the ids every other page links with.
+  const pickableTeams = allTeams.filter(
+    (team) => !followedTeams.some((followed) => String(followed.api_team_id) === String(team.id)),
   )
 
   return (
@@ -350,7 +361,7 @@ export default function Profile() {
               <div className="flex flex-col gap-2">
                 {pickableTeams.map((team) => (
                   <button
-                    key={team.api_team_id}
+                    key={team.id}
                     type="button"
                     onClick={() => handleFollowTeam(team)}
                     className="flex items-center justify-between rounded-lg border border-dash bg-dashboard px-3 py-2 text-left text-[13px] text-white"

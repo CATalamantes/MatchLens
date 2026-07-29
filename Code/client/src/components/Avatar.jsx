@@ -5,13 +5,16 @@ import { getInitials, paletteFor } from '../utilities/monogram'
 // otherwise falls back to a deterministic initials badge instead of a blank
 // grey block — used for user avatars and player photos alike, since neither
 // has a guaranteed image source.
-export default function Avatar({ name, src, className = '', textClassName = 'text-[13px]' }) {
+// `fit` is 'cover' for round profile avatars and 'contain' for player
+// headshots — API-Football portraits are near-square, so cover crops them
+// through the face when the slot is wide.
+export default function Avatar({ name, src, fit = 'cover', className = '', textClassName = 'text-[13px]' }) {
   const safeName = name || '?'
 
   if (src) {
     return (
       <div
-        className={`bg-cover bg-center ${className}`}
+        className={`${fit === 'contain' ? 'bg-contain bg-no-repeat' : 'bg-cover'} bg-center ${className}`}
         style={{ backgroundImage: `url(${src})` }}
         role="img"
         aria-label={safeName}
