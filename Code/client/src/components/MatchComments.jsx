@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import CommentsAPI from '../services/CommentsAPI'
-import '../css/MatchComments.css'
+import Avatar from './Avatar'
 
 const POLL_INTERVAL_MS = 7000
 
@@ -81,76 +81,102 @@ const MatchComments = ({ apiMatchId, variant = 'list' }) => {
         }
     }
 
+    const actionButton =
+        'rounded border border-dash px-2 py-1 text-[11px] font-semibold text-secondary hover:border-primary hover:text-primary'
+
     return (
-        <section className={`match-comments match-comments--${variant}`}>
-            <div className='match-comments-header'>
-                <h3>
-                    <span aria-hidden='true'>💬</span>{' '}
-                    {variant === 'chat' ? 'Live Fan Chat' : 'Comments'}
-                </h3>
-                {variant === 'chat' && (
-                    <span className='fans-active-badge'>{comments.length} comments</span>
-                )}
+        <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
+            <div className="flex items-center justify-between">
+                <p className="text-[16px] font-bold text-white">
+                    💬 {variant === 'chat' ? 'Live Fan Chat' : 'Comments'}
+                </p>
+                <span className="text-[12px] text-secondary">
+                    {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+                </span>
             </div>
 
-            { error && <p className='match-comments-error'>{error}</p> }
+            {error && <p className="text-[12px] text-dash-live">{error}</p>}
 
-            <div className='match-comments-list'>
-                {comments.map((comment) => (
-                    <div key={comment.comment_id} className='comment-row'>
-                        <span className='comment-avatar' aria-hidden='true'>👤</span>
-                        <div className='comment-body'>
-                            <div className='comment-meta'>
-                                <span className='comment-author'>{comment.email.split('@')[0]}</span>
-                                <span className='comment-timestamp'>
-                                    {new Date(comment.created_at).toLocaleString()}
-                                </span>
-                            </div>
+            <div className="flex flex-col gap-4">
+                {comments.map((comment) => {
+                    const author = comment.email.split('@')[0]
+                    const isOwn = user && user.id === comment.user_id
+                    const isEditing = editingId === comment.comment_id
 
-                            {editingId === comment.comment_id ? (
-                                <div className='comment-edit-form'>
-                                    <textarea
-                                        className='comment-textarea'
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                    />
-                                    <div className='comment-actions'>
-                                        <button type='button' onClick={() => saveEdit(comment.comment_id)}>Save</button>
-                                        <button type='button' onClick={cancelEdit}>Cancel</button>
+                    return (
+                        <div key={comment.comment_id} className="flex gap-3">
+                            <Avatar name={author} className="size-8 shrink-0 rounded-full" textClassName="text-[10px]" />
+
+                            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-[12px] font-bold text-primary">{author}</span>
+                                    <span className="text-[11px] text-secondary">
+                                        {new Date(comment.created_at).toLocaleString()}
+                                    </span>
+                                </div>
+
+                                {isEditing ? (
+                                    <div className="flex flex-col gap-2">
+                                        <textarea
+                                            className="w-full rounded-lg border border-dash bg-dash-input p-3 text-[13px] text-white outline-none focus:border-primary"
+                                            rows={2}
+                                            value={editContent}
+                                            onChange={(e) => setEditContent(e.target.value)}
+                                        />
+                                        <div className="flex gap-2">
+                                            <button type="button" className={actionButton} onClick={() => saveEdit(comment.comment_id)}>
+                                                Save
+                                            </button>
+                                            <button type="button" className={actionButton} onClick={cancelEdit}>
+                                                Cancel
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <p className='comment-content'>{comment.content}</p>
-                            )}
+                                ) : (
+                                    <p className="break-words text-[13px] text-secondary">{comment.content}</p>
+                                )}
 
-                            {user && user.id === comment.user_id && editingId !== comment.comment_id && (
-                                <div className='comment-actions'>
-                                    <button type='button' onClick={() => startEdit(comment)}>Edit</button>
-                                    <button type='button' onClick={() => handleDelete(comment.comment_id)}>Delete</button>
-                                </div>
-                            )}
+                                {isOwn && !isEditing && (
+                                    <div className="flex gap-2">
+                                        <button type="button" className={actionButton} onClick={() => startEdit(comment)}>
+                                            Edit
+                                        </button>
+                                        <button type="button" className={actionButton} onClick={() => handleDelete(comment.comment_id)}>
+                                            Delete
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
 
                 {comments.length === 0 && (
-                    <p className='match-comments-empty'>No comments yet. Be the first to share your thoughts.</p>
+                    <p className="text-[13px] text-secondary">
+                        No comments yet. Be the first to share your thoughts.
+                    </p>
                 )}
             </div>
 
             {user ? (
-                <form className='comment-form' onSubmit={handleSubmit}>
+                <form className="flex items-center gap-3" onSubmit={handleSubmit}>
                     <input
-                        type='text'
-                        className='comment-input'
-                        placeholder='Join the discussion...'
+                        type="text"
+                        className="flex-1 rounded-lg border border-dash bg-dash-input px-4 py-3 text-[13px] text-white outline-none placeholder:text-secondary focus:border-primary"
+                        placeholder="Join the discussion..."
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                     />
-                    <button type='submit' className='comment-submit' aria-label='Post comment'>➤</button>
+                    <button
+                        type="submit"
+                        aria-label="Post comment"
+                        className="rounded-lg bg-primary px-4 py-3 text-[13px] font-bold text-black"
+                    >
+                        ➤
+                    </button>
                 </form>
             ) : (
-                <p className='match-comments-login-prompt'>Log in to join the discussion.</p>
+                <p className="text-[13px] text-secondary">Log in to join the discussion.</p>
             )}
         </section>
     )

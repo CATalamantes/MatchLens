@@ -1,19 +1,20 @@
-import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useSessionUser } from '../../hooks/useSessionUser'
+import { useFollows, teamLogoUrl } from '../../hooks/useFollows'
 import AuthAPI from '../../services/AuthAPI'
 import Avatar from '../Avatar'
 import Crest from '../Crest'
 import Skeleton from '../Skeleton'
 import ballMark from '../../assets/ball.png'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
-
+// Labels name where each link actually goes. They used to read "Live Football"
+// (a finished tournament has no live matches), "Standings" pointing at the fan
+// leaderboard, and "Highlights" pointing at team discovery.
 const menuItems = [
   { label: 'Dashboard', to: '/', end: true, icon: DashboardIcon },
-  { label: 'Live Football', to: '/matches', end: false, icon: LiveIcon },
-  { label: 'Standings', to: '/leaderboard', end: false, icon: StandingsIcon },
-  { label: 'Highlights', to: '/discover', end: false, icon: HighlightsIcon },
+  { label: 'Matches', to: '/matches', end: false, icon: LiveIcon },
+  { label: 'Leaderboard', to: '/leaderboard', end: false, icon: StandingsIcon },
+  { label: 'Teams & Players', to: '/discover', end: false, icon: HighlightsIcon },
 ]
 
 function DashboardIcon({ className }) {
@@ -73,29 +74,11 @@ function SignOutIcon({ className }) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const user = useSessionUser()
-  const [followedTeams, setFollowedTeams] = useState([])
-  const [followsLoading, setFollowsLoading] = useState(true)
-  const [followsError, setFollowsError] = useState(null)
-
-  useEffect(() => {
-    if (!user?.id) {
-      setFollowsLoading(false)
-      return
-    }
-    setFollowsLoading(true)
-    setFollowsError(null)
-    fetch(`${API_URL}/api/follows/user/${user.id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load followed teams')
-        return res.json()
-      })
-      .then(setFollowedTeams)
-      .catch((err) => {
-        console.error('Failed to load followed teams', err)
-        setFollowsError('Could not load followed teams.')
-      })
-      .finally(() => setFollowsLoading(false))
-  }, [user?.id])
+  const {
+    follows: followedTeams,
+    loading: followsLoading,
+    error: followsError,
+  } = useFollows()
 
   // AuthAPI.logout clears localStorage itself. The server also has to destroy
   // the session — clearing only localStorage left the cookie alive, so the next
@@ -164,10 +147,23 @@ export default function Sidebar() {
             {!followsLoading &&
               !followsError &&
               followedTeams.map((team) => (
-                <div key={team.followed_team_id} className="flex items-center gap-3">
-                  <Crest compact label={team.team_name} className="size-5 shrink-0 rounded" />
-                  <p className="text-[13px] font-medium text-white">{team.team_name}</p>
-                </div>
+                <NavLink
+                  key={team.followed_team_id}
+                  to={`/teams/${team.api_team_id}`}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-md px-1 py-0.5 ${
+                      isActive ? 'text-primary' : 'text-white hover:text-primary'
+                    }`
+                  }
+                >
+                  <Crest
+                    compact
+                    label={team.team_name}
+                    logo={teamLogoUrl(team.api_team_id)}
+                    className="size-5 shrink-0 rounded"
+                  />
+                  <p className="truncate text-[13px] font-medium">{team.team_name}</p>
+                </NavLink>
               ))}
             {!followsLoading && !followsError && followedTeams.length === 0 && (
               <p className="text-[12px] text-secondary">No teams followed yet.</p>

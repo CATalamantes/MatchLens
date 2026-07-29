@@ -39,25 +39,25 @@ Backend:
 
 Users can create an account and log in securely to access their profile and personalized features.
 
-<img src='./Gif/Login.gif' title='Authentication Demo' width='600' alt='Authentication Demo' />
+<img src='./Gif/auth.gif' title='Authentication Demo' width='600' alt='Authentication Demo' />
 
 ### Search
 
 Users can search for players, teams, and matches to quickly find what they're looking for.
 
-[gif goes here]
+<img src='./Gif/Search.gif' title='Search Demo' width='600' alt='Search Demo' />
 
 ### ✅Data Display
 
 Users can browse players (history, team, and stats), match details (score, lineup, venue, weather), and a calendar of fixtures.
 
-<img src='./Gif/match.gif' title='Data Dispaly Demo' width='600' alt='Authentication Demo' />
+<img src='./Gif/Data DIsplay.gif' title='Data Dispaly Demo' width='600' alt='Data Display Demo' />
 
 ### Leaderboards
 
 Users can view ranked tables of top players by their stats and top users by their virtual points.
 
-[gif goes here]
+<img src='./Gif/Leaderboard.gif' title='Leaderboards Demo' width='600' alt='Leaderboards Demo' />
 
 ### Score Predictions
 
@@ -70,13 +70,13 @@ up the user leaderboard.
 
 Users can follow a team to get its latest news and match notifications.
 
-[gif goes here]
+<img src='./Gif/Following.gif' title='Team Following Demo' width='600' alt='Team Following Demo' />
 
 ### Comments
 
 Users can comment on matches to share their thoughts with other fans.
 
-[gif goes here]
+<img src='./Gif/comment.gif' title='Comments Demo' width='600' alt='Comments Demo' />
 
 ### Video Links
 
