@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useSessionUser } from '../../hooks/useSessionUser'
 import { useFollows, teamLogoUrl } from '../../hooks/useFollows'
+import { API_URL } from '../../config/api'
 import AuthAPI from '../../services/AuthAPI'
 import Avatar from '../Avatar'
 import Crest from '../Crest'
@@ -71,6 +73,29 @@ function SignOutIcon({ className }) {
   )
 }
 
+function BellIcon({ className }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className}>
+      <path
+        d="M8 1.5c-1.9 0-3.5 1.6-3.5 3.6v2.1c0 .5-.2 1-.6 1.4l-.7.7c-.3.3-.1.9.3.9h9c.4 0 .6-.6.3-.9l-.7-.7c-.4-.4-.6-.9-.6-1.4V5.1c0-2-1.6-3.6-3.5-3.6z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <path d="M6.6 12.5a1.5 1.5 0 0 0 2.8 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function timeAgo(dateString) {
+  const minutes = Math.floor((Date.now() - new Date(dateString).getTime()) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
 export default function Sidebar() {
   const navigate = useNavigate()
   const user = useSessionUser()
@@ -79,6 +104,45 @@ export default function Sidebar() {
     loading: followsLoading,
     error: followsError,
   } = useFollows()
+
+  const [notifications, setNotifications] = useState([])
+  const [notificationsLoading, setNotificationsLoading] = useState(true)
+  const [notificationsError, setNotificationsError] = useState(null)
+  const [showNotifications, setShowNotifications] = useState(false)
+
+  useEffect(() => {
+    if (!user?.id) {
+      setNotificationsLoading(false)
+      return
+    }
+    setNotificationsLoading(true)
+    setNotificationsError(null)
+    fetch(`${API_URL}/api/notifications/user/${user.id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load notifications')
+        return res.json()
+      })
+      .then(setNotifications)
+      .catch((err) => {
+        console.error('Failed to load notifications', err)
+        setNotificationsError('Could not load notifications.')
+      })
+      .finally(() => setNotificationsLoading(false))
+  }, [user?.id])
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length
+
+  async function handleMarkRead(notificationId) {
+    try {
+      const res = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, { method: 'PATCH' })
+      if (!res.ok) throw new Error('Failed to mark notification read')
+      setNotifications((prev) =>
+        prev.map((n) => (n.notification_id === notificationId ? { ...n, is_read: true } : n)),
+      )
+    } catch (err) {
+      console.error('Failed to mark notification read', err)
+    }
+  }
 
   // AuthAPI.logout clears localStorage itself. The server also has to destroy
   // the session — clearing only localStorage left the cookie alive, so the next
@@ -92,13 +156,68 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="flex min-h-screen bg-dashboard">
-      <aside className="flex w-[220px] shrink-0 flex-col gap-7 border-r border-dash bg-dash-sidebar p-5">
-        <div className="flex items-center gap-2">
-          <img src={ballMark} alt="" className="size-7 shrink-0" />
-          <p className="whitespace-nowrap text-[18px] font-bold text-white">
-            Match<span className="text-primary">L</span>ens
-          </p>
+    <div className="flex h-screen bg-dashboard">
+      <aside className="flex h-screen w-[220px] shrink-0 flex-col gap-7 border-r border-dash bg-dash-sidebar p-5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <img src={ballMark} alt="" className="size-7 shrink-0" />
+            <p className="whitespace-nowrap text-[18px] font-bold text-white">
+              Match<span className="text-primary">L</span>ens
+            </p>
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowNotifications((prev) => !prev)}
+              className="relative flex size-7 shrink-0 items-center justify-center rounded-md text-secondary hover:bg-white/5 hover:text-white"
+            >
+              <BellIcon className="size-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-dash-live text-[8px] font-bold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Close notifications"
+                  onClick={() => setShowNotifications(false)}
+                  className="fixed inset-0 z-40 cursor-default"
+                />
+                <div className="absolute left-0 top-9 z-50 flex w-[280px] flex-col gap-1 rounded-xl border border-dash bg-dash-card p-2 shadow-lg">
+                  <p className="px-2 py-1.5 text-[11px] font-bold uppercase text-secondary">Notifications</p>
+                  {notificationsLoading && (
+                    <p className="px-2 py-2 text-[12px] text-secondary">Loading…</p>
+                  )}
+                  {notificationsError && (
+                    <p className="px-2 py-2 text-[12px] text-dash-live">{notificationsError}</p>
+                  )}
+                  {!notificationsLoading && !notificationsError && notifications.length === 0 && (
+                    <p className="px-2 py-2 text-[12px] text-secondary">No notifications yet.</p>
+                  )}
+                  {!notificationsLoading &&
+                    !notificationsError &&
+                    notifications.map((n) => (
+                      <button
+                        key={n.notification_id}
+                        type="button"
+                        onClick={() => handleMarkRead(n.notification_id)}
+                        className={`flex flex-col gap-0.5 rounded-lg px-2 py-2 text-left ${
+                          n.is_read ? 'opacity-50' : 'bg-white/5'
+                        }`}
+                      >
+                        <p className="text-[12px] text-white">{n.message}</p>
+                        <p className="text-[10px] text-secondary">{timeAgo(n.created_at)}</p>
+                      </button>
+                    ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 rounded-md bg-dash-input py-2 pl-3 pr-2">
@@ -131,9 +250,9 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           <p className="text-[11px] font-bold uppercase text-secondary">Followed Teams</p>
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5 overflow-y-auto">
             {followsLoading &&
               [0, 1, 2].map((i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -171,7 +290,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <div className="mt-auto flex flex-col gap-1.5">
+        <div className="flex shrink-0 flex-col gap-1.5">
           <NavLink
             to="/profile"
             className={({ isActive }) =>
@@ -200,7 +319,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      <main className="flex-1 bg-dashboard">
+      <main className="flex-1 overflow-y-auto bg-dashboard">
         <Outlet />
       </main>
     </div>

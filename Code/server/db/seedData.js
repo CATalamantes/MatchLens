@@ -36,6 +36,9 @@ export const demoUsers = [
     },
 ];
 
+// api_team_id values are real API-Football team IDs from the World Cup
+// (league 1, season 2022) — must match what GET /api/teams/:id resolves,
+// not arbitrary placeholders.
 export const demoFollowedTeams = [
     { user_id: 1, api_team_id: "26", team_name: "Argentina" },
     { user_id: 1, api_team_id: "6", team_name: "Brazil" },
@@ -95,7 +98,7 @@ export const demoNotifications = [
     },
     {
         user_id: 2,
-        api_team_id: "2",
+        api_team_id: "6",
         api_match_id: null,
         notification_type: "transfer_news",
         message: "France name their squad for the next window.",

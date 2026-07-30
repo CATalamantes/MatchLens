@@ -62,14 +62,26 @@ export async function getTeamById(req, res) {
     const row = allStandingRows(data).find((r) => r.team.id === id);
     if (!row) return res.status(404).json({ error: "Team not found" });
 
-    // Every fixture this team played, so the profile can show real results
-    // rather than the placeholder schedule it used to render.
-    const fixtures = await footballApiGet(
-      `/fixtures?league=${LEAGUE_ID}&season=${SEASON}&team=${id}`,
-    );
+    // Every fixture this team played, plus the squad list, fetched together
+    // so the profile can show real results and a real roster rather than the
+    // placeholder content it used to render.
+    const [fixtures, squadData] = await Promise.all([
+      footballApiGet(`/fixtures?league=${LEAGUE_ID}&season=${SEASON}&team=${id}`),
+      footballApiGet(`/players/squads?team=${id}`),
+    ]);
+
+    const squad = (squadData[0]?.players ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      age: p.age,
+      number: p.number,
+      position: p.position,
+      photo: p.photo,
+    }));
 
     res.status(200).json({
       ...mapStandingRow(row),
+      squad,
       fixtures: fixtures.map((f) => ({
         id: f.fixture.id,
         date: f.fixture.date,

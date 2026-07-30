@@ -7,8 +7,8 @@ import ballFrame from '../assets/ball-frame.svg'
 const AUTH_URL = `${AUTH_ORIGIN}/auth`
 
 // Shared shell for /login and /signup — the two-column layout, brand marks,
-// GitHub button and footer are pixel-identical between the two Figma frames;
-// only the heading copy, form fields and spacing differ per page.
+// and GitHub button are pixel-identical between the two Figma frames; only
+// the heading copy, form fields and spacing differ per page.
 export default function AuthLayout({
   title,
   subtitle,
@@ -56,11 +56,6 @@ export default function AuthLayout({
           <p className="text-center text-[14px] font-semibold text-secondary">
             {footerPrompt} <Link to={footerLinkTo} className="text-primary">{footerLinkLabel}</Link>
           </p>
-        </div>
-
-        <div className="flex flex-col items-center gap-2 pt-10 text-center text-secondary">
-          <p className="text-[13px]">Terms of Service&nbsp;&nbsp;·&nbsp;&nbsp;Privacy Policy&nbsp;&nbsp;·&nbsp;&nbsp;Help Center</p>
-          <p className="text-[11px]">v2.4.0-Stable&nbsp;&nbsp;·&nbsp;&nbsp;Systems Operational</p>
         </div>
       </div>
 

@@ -10,7 +10,9 @@
       "Bash(python3 -c ' *)",
       "Bash(taskkill //PID 27472 //F)",
       "Bash(git status *)",
-      "Bash(powershell.exe -NoProfile -Command \"\\(Get-Content 'Code/client/src/pages/Leaderboard.jsx' -Raw\\) -replace 'dash-mlx','primary' | Set-Content -NoNewline -Encoding utf8 'Code/client/src/pages/Leaderboard.jsx'\")"
+      "Bash(powershell.exe -NoProfile -Command \"\\(Get-Content 'Code/client/src/pages/Leaderboard.jsx' -Raw\\) -replace 'dash-mlx','primary' | Set-Content -NoNewline -Encoding utf8 'Code/client/src/pages/Leaderboard.jsx'\")",
+      "Bash(git rev-list *)",
+      "Bash(netstat -ano)"
     ]
   }
 }

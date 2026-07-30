@@ -11,12 +11,33 @@ const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
 const DEFAULT_BIO = 'Tactical obsession. Data-driven insights. World Cup 2026 prediction specialist.'
 
 // Decorative only — no transactions table or trend data exists anywhere
-// (points-beyond-display is GildardoOrea's territory, #10).
-const balanceTrend = [40, 55, 35, 60, 30, 70, 50]
+// (points-beyond-display is GildardoOrea's territory, #10). Shaped to loosely
+// echo the 3 mock transactions below: two clear rises and a smaller third
+// bump, easing into the final dip.
+const balanceTrend = [35, 40, 46, 72, 50, 44, 82, 64, 70, 58, 46]
+
+const TREND_CHART_WIDTH = 100
+const TREND_CHART_HEIGHT = 60
+const TREND_GRID_STEPS = [0, 25, 50, 75, 100]
+
+// SVG y grows downward; `value` is already a 0-100 height percentage.
+const trendChartPoints = balanceTrend.map((value, index) => ({
+  x: (index / (balanceTrend.length - 1)) * TREND_CHART_WIDTH,
+  y: TREND_CHART_HEIGHT - (value / 100) * TREND_CHART_HEIGHT,
+}))
+
+// Straight point-to-point segments — the "easing" on the last leg is in the
+// data (a smaller step down), not the line rendering.
+function linePath(points) {
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ')
+}
+
+const trendLinePath = linePath(trendChartPoints)
+const trendAreaPath = `${trendLinePath} L ${TREND_CHART_WIDTH},${TREND_CHART_HEIGHT} L 0,${TREND_CHART_HEIGHT} Z`
 const recentTransactions = [
-  { label: 'Argentina vs Mexico ✅', amount: '+320 pts', positive: true },
-  { label: 'France vs Germany ❌', amount: '-200 pts', positive: false },
-  { label: 'Brazil vs Serbia ✅', amount: '+450 pts', positive: true },
+  { label: 'Argentina vs Mexico', amount: '+320 pts', positive: true },
+  { label: 'France vs Germany', amount: '-200 pts', positive: false },
+  { label: 'Brazil vs Serbia', amount: '+450 pts', positive: true },
 ]
 
 const connectedApps = [
@@ -25,16 +46,52 @@ const connectedApps = [
   { name: 'Spotify', connected: false },
 ]
 
+function LocationPinIcon({ className }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className}>
+      <path
+        d="M8 14.5s5-4.2 5-8.2a5 5 0 1 0-10 0c0 4 5 8.2 5 8.2z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="6.3" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  )
+}
+
+function ArrowUpCircleIcon({ className }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M8 10.5v-5M5.5 8L8 5.5L10.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function ArrowDownCircleIcon({ className }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M8 5.5v5M5.5 8L8 10.5L10.5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function ToggleSwitch({ checked, onChange }) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={onChange}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-dash-input'}`}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-dash-card ${
+        checked ? 'bg-primary' : 'bg-dash-input'
+      }`}
     >
       <span
-        className={`absolute top-0.5 size-4 rounded-full bg-white transition-transform ${
-          checked ? 'translate-x-[18px]' : 'translate-x-0.5'
+        className={`absolute top-0.5 size-4 rounded-full bg-white transition-[left] ${
+          checked ? 'left-[18px]' : 'left-0.5'
         }`}
       />
     </button>
@@ -54,6 +111,8 @@ export default function Profile() {
   const [followError, setFollowError] = useState(null)
   const [showTeamPicker, setShowTeamPicker] = useState(false)
   const [allTeams, setAllTeams] = useState([])
+  const [loadingAllTeams, setLoadingAllTeams] = useState(true)
+  const [allTeamsError, setAllTeamsError] = useState(null)
 
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState(null)
@@ -74,15 +133,6 @@ export default function Profile() {
     dataSharing: false,
     showPredictionHistory: true,
   })
-
-  // The follow picker needs the real team list so the ids it writes match the
-  // ones Discover, the standings, and every team link already use.
-  useEffect(() => {
-    fetch(`${API_URL}/api/teams`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setAllTeams)
-      .catch((err) => console.error('Failed to load teams', err))
-  }, [])
 
   useEffect(() => {
     if (!userId) return
@@ -118,6 +168,22 @@ export default function Profile() {
       })
       .finally(() => setLoadingFollows(false))
   }, [userId])
+
+  useEffect(() => {
+    setLoadingAllTeams(true)
+    setAllTeamsError(null)
+    fetch(`${API_URL}/api/teams`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load teams')
+        return res.json()
+      })
+      .then((data) => setAllTeams(data.map((t) => ({ ...t, api_team_id: String(t.id) }))))
+      .catch((err) => {
+        console.error('Failed to load teams', err)
+        setAllTeamsError('Could not load the team list.')
+      })
+      .finally(() => setLoadingAllTeams(false))
+  }, [])
 
   async function handleAvatarChange(event) {
     const file = event.target.files?.[0]
@@ -198,11 +264,12 @@ export default function Profile() {
     }
   }
 
-  // Teams come from the API rather than a mock list, so the ids used to follow
-  // match the ids every other page links with.
+  // Compares against api_team_id (not the raw id) because teamLogoById below
+  // is keyed the same way, and every other page follows/links teams by that id.
   const pickableTeams = allTeams.filter(
-    (team) => !followedTeams.some((followed) => String(followed.api_team_id) === String(team.id)),
+    (team) => !followedTeams.some((followed) => String(followed.api_team_id) === String(team.api_team_id)),
   )
+  const teamLogoById = Object.fromEntries(allTeams.map((team) => [team.api_team_id, team.logo]))
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -275,7 +342,10 @@ export default function Profile() {
 
             <p className="text-[13px] text-white">{bio}</p>
             <div className="flex items-center gap-4 text-[12px] text-secondary">
-              <p>📍 London, UK</p>
+              <p className="flex items-center gap-1">
+                <LocationPinIcon className="size-3 shrink-0" />
+                London, UK
+              </p>
               <p>Joined March 2024</p>
             </div>
           </div>
@@ -302,10 +372,54 @@ export default function Profile() {
               <div className="flex items-center justify-between text-[11px] text-secondary">
                 <p>Balance Trend (Last 30 days)</p>
               </div>
-              <div className="flex h-10 items-end gap-1.5">
-                {balanceTrend.map((height, index) => (
-                  <div key={index} className="flex-1 rounded-t bg-primary/40" style={{ height: `${height}%` }} />
-                ))}
+              <div className="relative h-24 text-primary">
+                <svg
+                  viewBox={`0 0 ${TREND_CHART_WIDTH} ${TREND_CHART_HEIGHT}`}
+                  preserveAspectRatio="none"
+                  className="h-full w-full overflow-visible"
+                >
+                  {TREND_GRID_STEPS.map((pct) => (
+                    <line
+                      key={`v-${pct}`}
+                      x1={(pct / 100) * TREND_CHART_WIDTH}
+                      y1="0"
+                      x2={(pct / 100) * TREND_CHART_WIDTH}
+                      y2={TREND_CHART_HEIGHT}
+                      stroke="white"
+                      strokeOpacity="0.08"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                  {TREND_GRID_STEPS.map((pct) => (
+                    <line
+                      key={`h-${pct}`}
+                      x1="0"
+                      y1={(pct / 100) * TREND_CHART_HEIGHT}
+                      x2={TREND_CHART_WIDTH}
+                      y2={(pct / 100) * TREND_CHART_HEIGHT}
+                      stroke="white"
+                      strokeOpacity="0.08"
+                      strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+                  <path d={trendAreaPath} fill="currentColor" fillOpacity="0.1" stroke="none" />
+                  <path
+                    d={trendLinePath}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                <div
+                  title="Most recent"
+                  className="absolute size-2 -translate-x-1/2 translate-y-1/2 rounded-full bg-primary ring-2 ring-dash-card"
+                  style={{ left: '100%', bottom: `${balanceTrend[balanceTrend.length - 1]}%` }}
+                />
               </div>
             </div>
 
@@ -313,7 +427,14 @@ export default function Profile() {
               <p className="text-[12px] font-semibold text-white">Recent Transactions</p>
               {recentTransactions.map((tx) => (
                 <div key={tx.label} className="flex items-center justify-between text-[13px]">
-                  <p className="text-white">{tx.label}</p>
+                  <div className="flex items-center gap-2">
+                    {tx.positive ? (
+                      <ArrowUpCircleIcon className="size-3.5 shrink-0 text-primary" />
+                    ) : (
+                      <ArrowDownCircleIcon className="size-3.5 shrink-0 text-dash-live" />
+                    )}
+                    <p className="text-white">{tx.label}</p>
+                  </div>
                   <p className={tx.positive ? 'text-primary' : 'text-dash-live'}>{tx.amount}</p>
                 </div>
               ))}
@@ -340,7 +461,7 @@ export default function Profile() {
                 followedTeams.map((team) => (
                   <div key={team.followed_team_id} className="flex items-center justify-between border-b border-dash pb-3">
                     <div className="flex items-center gap-3">
-                      <Crest compact label={team.team_name} className="size-6 rounded" />
+                      <Crest compact label={team.team_name} src={teamLogoById[team.api_team_id]} className="size-6 rounded" />
                       <p className="text-[14px] font-bold text-white">{team.team_name}</p>
                     </div>
                     <button
@@ -359,19 +480,26 @@ export default function Profile() {
 
             {showTeamPicker ? (
               <div className="flex flex-col gap-2">
-                {pickableTeams.map((team) => (
-                  <button
-                    key={team.id}
-                    type="button"
-                    onClick={() => handleFollowTeam(team)}
-                    className="flex items-center justify-between rounded-lg border border-dash bg-dashboard px-3 py-2 text-left text-[13px] text-white"
-                  >
-                    {team.name}
-                    <span className="text-primary">+ Follow</span>
-                  </button>
-                ))}
-                {pickableTeams.length === 0 && (
-                  <p className="text-[12px] text-secondary">All available teams are already followed.</p>
+                {allTeamsError && <p className="text-[12px] text-dash-live">{allTeamsError}</p>}
+                {loadingAllTeams ? (
+                  <p className="text-[12px] text-secondary">Loading teams…</p>
+                ) : (
+                  <>
+                    {pickableTeams.map((team) => (
+                      <button
+                        key={team.api_team_id}
+                        type="button"
+                        onClick={() => handleFollowTeam(team)}
+                        className="flex items-center justify-between rounded-lg border border-dash bg-dashboard px-3 py-2 text-left text-[13px] text-white"
+                      >
+                        {team.name}
+                        <span className="text-primary">+ Follow</span>
+                      </button>
+                    ))}
+                    {pickableTeams.length === 0 && !allTeamsError && (
+                      <p className="text-[12px] text-secondary">All available teams are already followed.</p>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -436,7 +564,7 @@ export default function Profile() {
               {connectedApps.map((app) => (
                 <div key={app.name} className="flex items-center justify-between">
                   <p className="text-[14px] text-white">
-                    {app.name} <span className="text-secondary">· {app.connected ? 'Connected ✓' : 'Not Connected'}</span>
+                    {app.name} <span className="text-secondary">· {app.connected ? 'Connected' : 'Not Connected'}</span>
                   </p>
                   <button
                     type="button"

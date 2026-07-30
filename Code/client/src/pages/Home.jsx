@@ -135,7 +135,7 @@ export default function Home() {
 
         {/* Tournament Path */}
         <section className="flex min-w-0 flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-          <h2 className="text-[16px] font-bold text-white">🏆 Tournament Path</h2>
+          <h2 className="text-[16px] font-bold text-white">Tournament Path</h2>
 
           {errors.bracket && <p className="text-[13px] text-dash-live">{errors.bracket}</p>}
           {loading && <Skeleton className="h-[240px] w-full rounded-xl" />}
@@ -147,7 +147,7 @@ export default function Home() {
             the teams this user actually follows. */}
         <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-[16px] font-bold text-white">⭐ Your Followed Teams</h2>
+            <h2 className="text-[16px] font-bold text-white">Your Followed Teams</h2>
             <Link to="/discover" className="text-[11px] font-bold text-primary">
               FIND TEAMS
             </Link>
@@ -165,7 +165,7 @@ export default function Home() {
 
         {/* Group standings */}
         <section className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-          <h2 className="text-[16px] font-bold text-white">🔥 Group Stage Standings</h2>
+          <h2 className="text-[16px] font-bold text-white">Group Stage Standings</h2>
 
           {errors.teams && <p className="text-[13px] text-dash-live">{errors.teams}</p>}
           {loading && (
@@ -191,7 +191,7 @@ export default function Home() {
 
         {/* Top scorers */}
         <section className="flex flex-col gap-4">
-          <h2 className="text-[16px] font-bold text-white">⚽ Top Scorers</h2>
+          <h2 className="text-[16px] font-bold text-white">Top Scorers</h2>
           {errors.players && <p className="text-[13px] text-dash-live">{errors.players}</p>}
           {loading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -82,7 +82,7 @@ export default function StandingsTable({ teams, variant = 'teams', rows }) {
               {rank}
             </p>
             <Link to={`/teams/${team.id}`} className="flex flex-1 items-center gap-3">
-              <Crest label={team.name} className="size-6 rounded-full" textClassName="text-[9px]" />
+              <Crest label={team.name} src={team.logo} className="size-6 rounded-full" textClassName="text-[9px]" />
               <p className="text-[13px] font-semibold text-white">{team.name}</p>
             </Link>
             <p className="w-10 text-center text-[13px] text-white">{team.wins}</p>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import Avatar from '../components/Avatar'
 import Crest from '../components/Crest'
 import Skeleton from '../components/Skeleton'
 import { API_URL } from '../config/api'
@@ -197,6 +198,37 @@ export default function TeamDetail() {
               </Link>
             ))}
           </div>
+        </div>
+
+        {/* Squad */}
+        <div className="flex flex-col gap-4">
+          <p className="text-[18px] font-bold text-white">Squad</p>
+          {(team.squad ?? []).length === 0 ? (
+            <p className="text-[13px] text-secondary">Squad list isn't available for this team.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              {team.squad.map((player) => (
+                <Link
+                  key={player.id}
+                  to={`/players/${player.id}`}
+                  className="flex flex-col gap-3 rounded-xl border border-dash bg-dash-card p-4 hover:border-primary"
+                >
+                  <Avatar
+                    name={player.name}
+                    src={player.photo}
+                    fit="contain"
+                    className="h-[130px] w-full rounded-lg bg-dash-sidebar"
+                    textClassName="text-[28px]"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <p className="text-caption font-bold uppercase text-primary">#{player.number ?? '–'}</p>
+                    <p className="text-body-lg font-bold text-white">{player.name}</p>
+                    <p className="text-caption text-secondary">{player.position}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
