@@ -88,7 +88,7 @@ Users can access video highlights or full-game footage of a match.
 
 Users can customize their profile with a profile image and personal details.
 
-<img src='./Gif/Profile.gif' title='User Profile Demo' width='600' alt='Authentication Demo' />
+<img src='./Gif/profile.gif' title='User Profile Demo' width='600' alt='Profile Demo' />
 
 ### [ADDITIONAL FEATURES GO HERE - ADD ALL FEATURES HERE IN THE FORMAT ABOVE; you will check these off and add gifs as you complete them]
 
