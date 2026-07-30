@@ -41,7 +41,7 @@ Users can create an account and log in securely to access their profile and pers
 
 <img src='./Gif/auth.gif' title='Authentication Demo' width='600' alt='Authentication Demo' />
 
-### Search
+### ✅Search
 
 Users can search for players, teams, and matches to quickly find what they're looking for.
 
@@ -53,7 +53,7 @@ Users can browse players (history, team, and stats), match details (score, lineu
 
 <img src='./Gif/Data DIsplay.gif' title='Data Dispaly Demo' width='600' alt='Data Display Demo' />
 
-### Leaderboards
+### ✅Leaderboards
 
 Users can view ranked tables of top players by their stats and top users by their virtual points.
 
@@ -66,13 +66,13 @@ up the user leaderboard.
 
 [gif goes here]
 
-### Team Following
+### ✅Team Following
 
 Users can follow a team to get its latest news and match notifications.
 
 <img src='./Gif/Following.gif' title='Team Following Demo' width='600' alt='Team Following Demo' />
 
-### Comments
+### ✅Comments
 
 Users can comment on matches to share their thoughts with other fans.
 
@@ -88,7 +88,7 @@ Users can access video highlights or full-game footage of a match.
 
 Users can customize their profile with a profile image and personal details.
 
-<img src='./Gif/profile.gif' title='User Profile Demo' width='600' alt='Authentication Demo' />
+<img src='./Gif/Profile.gif' title='User Profile Demo' width='600' alt='Authentication Demo' />
 
 ### [ADDITIONAL FEATURES GO HERE - ADD ALL FEATURES HERE IN THE FORMAT ABOVE; you will check these off and add gifs as you complete them]
 
