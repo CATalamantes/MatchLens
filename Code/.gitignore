@@ -26,3 +26,6 @@ dist-ssr
 
 # vite build output (client vite.config.js builds to ../server/public)
 server/public
+
+# cached API-Football responses (see server/config/footballApi.js)
+server/.cache

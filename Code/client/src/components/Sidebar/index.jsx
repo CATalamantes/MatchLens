@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useSessionUser } from '../../hooks/useSessionUser'
+import { useFollows, teamLogoUrl } from '../../hooks/useFollows'
+import { API_URL } from '../../config/api'
 import AuthAPI from '../../services/AuthAPI'
 import Avatar from '../Avatar'
 import Crest from '../Crest'
 import Skeleton from '../Skeleton'
 import ballMark from '../../assets/ball.png'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
-
+// Labels name where each link actually goes. They used to read "Live Football"
+// (a finished tournament has no live matches), "Standings" pointing at the fan
+// leaderboard, and "Highlights" pointing at team discovery.
 const menuItems = [
   { label: 'Dashboard', to: '/', end: true, icon: DashboardIcon },
-  { label: 'Live Football', to: '/matches', end: false, icon: LiveIcon },
-  { label: 'Fan Leaderboard', to: '/leaderboard', end: false, icon: StandingsIcon },
-  { label: 'Highlights', to: '/discover', end: false, icon: HighlightsIcon },
+  { label: 'Matches', to: '/matches', end: false, icon: LiveIcon },
+  { label: 'Leaderboard', to: '/leaderboard', end: false, icon: StandingsIcon },
+  { label: 'Teams & Players', to: '/discover', end: false, icon: HighlightsIcon },
 ]
 
 function DashboardIcon({ className }) {
@@ -96,10 +99,12 @@ function timeAgo(dateString) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const user = useSessionUser()
-  const [followedTeams, setFollowedTeams] = useState([])
-  const [followsLoading, setFollowsLoading] = useState(true)
-  const [followsError, setFollowsError] = useState(null)
-  const [teamLogoById, setTeamLogoById] = useState({})
+  const {
+    follows: followedTeams,
+    loading: followsLoading,
+    error: followsError,
+  } = useFollows()
+
   const [notifications, setNotifications] = useState([])
   const [notificationsLoading, setNotificationsLoading] = useState(true)
   const [notificationsError, setNotificationsError] = useState(null)
@@ -138,39 +143,6 @@ export default function Sidebar() {
       console.error('Failed to mark notification read', err)
     }
   }
-
-  useEffect(() => {
-    if (!user?.id) {
-      setFollowsLoading(false)
-      return
-    }
-    setFollowsLoading(true)
-    setFollowsError(null)
-    fetch(`${API_URL}/api/follows/user/${user.id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load followed teams')
-        return res.json()
-      })
-      .then(setFollowedTeams)
-      .catch((err) => {
-        console.error('Failed to load followed teams', err)
-        setFollowsError('Could not load followed teams.')
-      })
-      .finally(() => setFollowsLoading(false))
-  }, [user?.id])
-
-  // followed_teams only stores a name/id snapshot, not a crest — join
-  // against the real team catalog so the sidebar can show real flags.
-  useEffect(() => {
-    fetch(`${API_URL}/api/teams`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        const byId = {}
-        for (const t of data) byId[String(t.id)] = t.logo
-        setTeamLogoById(byId)
-      })
-      .catch((err) => console.error('Failed to load team crests', err))
-  }, [])
 
   // AuthAPI.logout clears localStorage itself. The server also has to destroy
   // the session — clearing only localStorage left the cookie alive, so the next
@@ -294,19 +266,23 @@ export default function Sidebar() {
             {!followsLoading &&
               !followsError &&
               followedTeams.map((team) => (
-                <Link
+                <NavLink
                   key={team.followed_team_id}
                   to={`/teams/${team.api_team_id}`}
-                  className="flex items-center gap-3 text-secondary hover:text-white"
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 rounded-md px-1 py-0.5 ${
+                      isActive ? 'text-primary' : 'text-white hover:text-primary'
+                    }`
+                  }
                 >
                   <Crest
                     compact
                     label={team.team_name}
-                    src={teamLogoById[team.api_team_id]}
+                    logo={teamLogoUrl(team.api_team_id)}
                     className="size-5 shrink-0 rounded"
                   />
-                  <p className="truncate text-[13px] font-medium text-white">{team.team_name}</p>
-                </Link>
+                  <p className="truncate text-[13px] font-medium">{team.team_name}</p>
+                </NavLink>
               ))}
             {!followsLoading && !followsError && followedTeams.length === 0 && (
               <p className="text-[12px] text-secondary">No teams followed yet.</p>

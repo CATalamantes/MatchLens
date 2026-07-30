@@ -1,20 +1,24 @@
+import { useState } from 'react'
 import { paletteFor, shortLabel } from '../utilities/monogram'
 
-// Drop-in replacement for the old `bg-white/10` crest blocks — pass the same
-// size/shape classes via `className`. Renders the real crest when `src` is
-// available (only `/api/teams` returns one so far); otherwise falls back to
-// a deterministic initials badge, never an invented logo.
+// Renders a team badge. API-Football supplies a real crest URL for every team,
+// so `logo` is the normal path; the deterministic initials badge stays as the
+// fallback for teams without one and for images that fail to load (rather than
+// leaving a broken-image icon on the page).
 // `compact` hides the label for slots too small to render legible text.
-export default function Crest({ label, src, compact = false, className = '', textClassName = 'text-[11px]' }) {
+export default function Crest({ label, logo, compact = false, className = '', textClassName = 'text-[11px]' }) {
   const safeLabel = label || '?'
+  const [logoFailed, setLogoFailed] = useState(false)
 
-  if (src) {
+  if (logo && !logoFailed) {
     return (
       <img
-        src={src}
+        src={logo}
         alt=""
         title={safeLabel}
-        className={`shrink-0 bg-white object-contain ${className}`}
+        aria-hidden="true"
+        onError={() => setLogoFailed(true)}
+        className={`shrink-0 object-contain ${className}`}
       />
     )
   }

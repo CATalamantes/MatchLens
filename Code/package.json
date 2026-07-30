@@ -5,7 +5,8 @@
     "dev": "concurrently \"cd client && vite\" \"cd server && nodemon server\"",
     "start": "cd server && node server",
     "build": "cd client && vite build",
-    "reset": "cd server && node db/resetDatabase.js"
+    "reset": "cd server && node db/resetDatabase.js",
+    "sync": "cd server && node db/syncTournament.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

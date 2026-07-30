@@ -8,6 +8,12 @@
 -- Team/match/player data itself comes from an external football API —
 -- we only store api_team_id / api_match_id as reference strings, not
 -- as foreign keys to local team/match tables.
+--
+-- NOTE: tournament_teams / tournament_players are NOT defined here.
+-- They are a cached index of external API data (not user-owned domain
+-- entities) and live in tournamentSchema.sql precisely so that the
+-- DROPs below never wipe them — rebuilding them costs ~43 API requests
+-- against a 100/day quota. Populate them with `npm run sync`.
 -- =========================================================
 
 -- Drop in reverse dependency order so foreign keys don't block us

@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react'
-import TeamCard from '../components/TeamCard'
-import { useSessionUser } from '../hooks/useSessionUser'
-import { useTeamSearch } from '../hooks/useTeamSearch'
+import { Link } from 'react-router-dom'
+import Avatar from '../components/Avatar'
+import Crest from '../components/Crest'
+import Skeleton from '../components/Skeleton'
+import { useSearch } from '../hooks/useSearch'
+import { API_URL } from '../config/api'
+import ballMark from '../assets/ball.png'
 
-const API_URL = import.meta.env.VITE_API_URL ?? ''
-
-const TRENDING_TAGS = ['Lionel Messi', 'Kylian Mbappé', 'World Cup 2026', 'Argentina', 'France']
-
-const GROUP_TABS = [
-  { label: 'All', value: 'All' },
-  { label: 'Group A', value: 'Group A' },
-  { label: 'Group B', value: 'Group B' },
-  { label: 'Group C', value: 'Group C' },
-  { label: 'Group D', value: 'Group D' },
-  { label: 'Group E', value: 'Group E' },
-  { label: 'Group F', value: 'Group F' },
-  { label: 'Group G', value: 'Group G' },
-  { label: 'Group H', value: 'Group H' },
+const SORTS = [
+  { value: '', label: 'Relevance' },
+  { value: 'goals', label: 'Most goals' },
+  { value: 'assists', label: 'Most assists' },
+  { value: 'age_desc', label: 'Oldest first' },
+  { value: 'age_asc', label: 'Youngest first' },
+  { value: 'name', label: 'Name (A–Z)' },
 ]
 
 function SearchIcon({ className }) {
@@ -28,164 +25,371 @@ function SearchIcon({ className }) {
   )
 }
 
-export default function Discover() {
-  const sessionUser = useSessionUser()
-  const userId = sessionUser?.id
+function SearchBar({ value, onChange, autoFocus, large }) {
+  return (
+    <div
+      className={`flex w-full items-center gap-3 rounded-full border border-dash bg-dash-card focus-within:border-primary ${
+        large ? 'px-6 py-4' : 'px-4 py-2.5'
+      }`}
+    >
+      <SearchIcon className={`shrink-0 text-secondary ${large ? 'size-5' : 'size-4'}`} />
+      <input
+        type="text"
+        value={value}
+        autoFocus={autoFocus}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Search teams and players..."
+        className={`w-full bg-transparent text-white placeholder:text-secondary focus:outline-none ${
+          large ? 'text-[16px]' : 'text-[13px]'
+        }`}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          aria-label="Clear search"
+          className="shrink-0 text-[16px] leading-none text-secondary hover:text-white"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  )
+}
 
-  const [teams, setTeams] = useState([])
-  const [teamsLoading, setTeamsLoading] = useState(true)
-  const [teamsError, setTeamsError] = useState(null)
-  const { searchTerm, setSearchTerm, activeGroup, setActiveGroup, filteredTeams } = useTeamSearch(teams)
-  const [followedTeams, setFollowedTeams] = useState([])
-  const [followsLoading, setFollowsLoading] = useState(true)
-  const [followsLoadError, setFollowsLoadError] = useState(null)
-  const [followError, setFollowError] = useState(null)
+function FilterGroup({ title, children }) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-dash pb-4 last:border-b-0">
+      <p className="text-[11px] font-bold uppercase text-secondary">{title}</p>
+      {children}
+    </div>
+  )
+}
+
+function FilterOption({ label, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left text-[13px] ${active ? 'font-bold text-primary' : 'text-white hover:text-primary'}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function TeamResult({ team }) {
+  return (
+    <Link
+      to={`/teams/${team.id}`}
+      className="flex items-center gap-4 rounded-xl border border-dash bg-dash-card p-4 hover:border-primary"
+    >
+      <Crest label={team.name} logo={team.logo} className="size-14" textClassName="text-[16px]" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+            Team
+          </span>
+          <p className="truncate text-[15px] font-bold text-white">{team.name}</p>
+        </div>
+        <p className="text-[12px] text-secondary">
+          {team.group} · {team.played} played · {team.wins}W {team.draws}D {team.losses}L
+        </p>
+        <p className="text-[12px] text-secondary">
+          {team.goals_for} scored · {team.goals_against} conceded
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end">
+        <p className="text-[20px] font-extrabold text-primary">{team.points}</p>
+        <p className="text-[10px] uppercase text-secondary">pts</p>
+      </div>
+    </Link>
+  )
+}
+
+function PlayerResult({ player }) {
+  return (
+    <Link
+      to={`/players/${player.id}`}
+      className="flex items-center gap-4 rounded-xl border border-dash bg-dash-card p-4 hover:border-primary"
+    >
+      <Avatar
+        name={player.name}
+        src={player.photo}
+        fit="contain"
+        className="size-14 shrink-0 rounded-lg bg-dash-sidebar"
+        textClassName="text-[16px]"
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex items-center gap-2">
+          <span className="rounded bg-dash-input px-1.5 py-0.5 text-[9px] font-bold uppercase text-secondary">
+            Player
+          </span>
+          <p className="truncate text-[15px] font-bold text-white">{player.name}</p>
+          {player.squad_number != null && (
+            <span className="shrink-0 text-[11px] text-secondary">#{player.squad_number}</span>
+          )}
+        </div>
+        <p className="truncate text-[12px] text-secondary">
+          {[player.position, player.team_name, player.group].filter(Boolean).join(' · ')}
+        </p>
+        <p className="text-[12px] text-secondary">
+          {player.age ? `${player.age} yrs · ` : ''}
+          {player.nationality}
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-5 text-right">
+        <div className="flex flex-col">
+          <p className="text-[16px] font-extrabold text-white">{player.assists}</p>
+          <p className="text-[10px] uppercase text-secondary">assists</p>
+        </div>
+        <div className="flex flex-col">
+          <p className="text-[16px] font-extrabold text-primary">{player.goals}</p>
+          <p className="text-[10px] uppercase text-secondary">goals</p>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+export default function Discover() {
+  const { query, filters, page, hasSearched, results, total, loading, error, update, clearAll } =
+    useSearch()
+
+  const [facets, setFacets] = useState({ groups: [], positions: [] })
+  const [featured, setFeatured] = useState([])
 
   useEffect(() => {
-    setTeamsLoading(true)
-    setTeamsError(null)
-    fetch(`${API_URL}/api/teams`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load teams')
-        return res.json()
-      })
-      .then((data) => setTeams(data.map((t) => ({ ...t, api_team_id: String(t.id) }))))
-      .catch((err) => {
-        console.error('Failed to load teams', err)
-        setTeamsError('Could not load teams. Please try again.')
-      })
-      .finally(() => setTeamsLoading(false))
+    fetch(`${API_URL}/api/search/facets`)
+      .then((res) => (res.ok ? res.json() : { groups: [], positions: [] }))
+      .then(setFacets)
+      .catch(() => {})
+
+    // A handful of crests under the search box, so the landing page isn't a
+    // bare input with nothing to click.
+    fetch(`${API_URL}/api/search?type=team&sort=points`)
+      .then((res) => (res.ok ? res.json() : { results: [] }))
+      .then((body) => setFeatured((body.results ?? []).slice(0, 8)))
+      .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (!userId) {
-      setFollowsLoading(false)
-      return
-    }
-    setFollowsLoading(true)
-    setFollowsLoadError(null)
-    fetch(`${API_URL}/api/follows/user/${userId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to load followed teams')
-        return res.json()
-      })
-      .then(setFollowedTeams)
-      .catch((err) => {
-        console.error('Failed to load followed teams', err)
-        setFollowsLoadError('Could not load your followed teams — follow status may be out of date.')
-      })
-      .finally(() => setFollowsLoading(false))
-  }, [userId])
-
-  async function handleToggleFollow(team) {
-    setFollowError(null)
-    const existing = followedTeams.find((f) => String(f.api_team_id) === String(team.api_team_id))
-    try {
-      if (existing) {
-        const res = await fetch(`${API_URL}/api/follows/${existing.followed_team_id}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error('Unfollow failed')
-        setFollowedTeams((prev) => prev.filter((f) => f.followed_team_id !== existing.followed_team_id))
-      } else {
-        const res = await fetch(`${API_URL}/api/follows`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId, api_team_id: team.api_team_id, team_name: team.name }),
-        })
-        if (!res.ok) throw new Error('Follow failed')
-        const created = await res.json()
-        setFollowedTeams((prev) => [...prev, created])
-      }
-    } catch (err) {
-      setFollowError('Could not update follow status. Please try again.')
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Featured banner */}
-      <div className="relative overflow-hidden rounded-2xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-dash-card to-black" />
-        <div className="relative flex flex-col gap-2 p-6">
-          <span className="w-fit rounded bg-primary px-2 py-1 text-[10px] font-bold text-dash-sidebar">
-            DISCOVER THE WORLD CUP
-          </span>
-          <h1 className="text-[28px] font-extrabold text-white">Explore the World Cup 2026</h1>
-          <p className="text-[13px] font-medium text-primary">
-            Find and follow national teams and players competing in the FIFA World Cup 2026.
+  // ── Landing ──────────────────────────────────────────────────────────
+  if (!hasSearched) {
+    return (
+      <div className="flex flex-col items-center gap-8 px-6 py-20">
+        <div className="flex items-center gap-3">
+          <img src={ballMark} alt="" className="size-10 shrink-0" />
+          <p className="text-[34px] font-extrabold text-white">
+            Match<span className="text-primary">L</span>ens
           </p>
         </div>
+
+        <p className="text-[13px] text-secondary">
+          Search every team and player from the FIFA World Cup 2022
+        </p>
+
+        <div className="w-full max-w-[620px]">
+          <SearchBar value={query} onChange={(value) => update({ q: value })} autoFocus large />
+        </div>
+
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-[11px] font-bold uppercase text-secondary">Browse teams</p>
+          <div className="flex max-w-[620px] flex-wrap justify-center gap-3">
+            {featured.length === 0
+              ? [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <Skeleton key={i} className="size-14 rounded-full" />
+                ))
+              : featured.map((team) => (
+                  <Link
+                    key={team.id}
+                    to={`/teams/${team.id}`}
+                    title={team.name}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <Crest label={team.name} logo={team.logo} className="size-12" compact />
+                    <span className="max-w-[72px] truncate text-[10px] text-secondary">
+                      {team.name}
+                    </span>
+                  </Link>
+                ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Results ──────────────────────────────────────────────────────────
+  const activeFilterCount = [
+    filters.type !== 'all' ? 1 : 0,
+    filters.position ? 1 : 0,
+    filters.group ? 1 : 0,
+    filters.number ? 1 : 0,
+  ].reduce((a, b) => a + b, 0)
+
+  return (
+    <div className="flex flex-col gap-5 p-6">
+      <div className="max-w-[720px]">
+        <SearchBar value={query} onChange={(value) => update({ q: value })} />
       </div>
 
-      {/* Search and trending */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-5">
-        <div className="flex items-center gap-3 rounded-lg border border-dash bg-dashboard px-4 py-3">
-          <SearchIcon className="size-4 shrink-0 text-secondary" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search teams, players, leagues..."
-            className="w-full bg-transparent text-[13px] font-medium text-white placeholder:text-secondary focus:outline-none"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <p className="text-[11px] font-semibold text-secondary">Trending:</p>
-          {TRENDING_TAGS.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-dash bg-dash-sidebar px-3 py-1.5 text-[11px] font-semibold text-white"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Filter by group */}
-      <div className="flex flex-col gap-4">
-        <p className="text-[16px] font-bold text-white">Filter by League</p>
-        <div className="flex flex-wrap gap-2.5">
-          {GROUP_TABS.map((tab) => {
-            const isActive = tab.value === activeGroup
-            return (
+      <div className="flex gap-6">
+        {/* Filter rail */}
+        <aside className="hidden w-[210px] shrink-0 flex-col gap-4 rounded-2xl border border-dash bg-dash-card p-4 lg:flex">
+          <div className="flex items-center justify-between">
+            <p className="text-[13px] font-bold text-white">Filters</p>
+            {activeFilterCount > 0 && (
               <button
-                key={tab.value}
                 type="button"
-                onClick={() => setActiveGroup(tab.value)}
-                className={`rounded-lg border border-dash px-[18px] py-2.5 text-[13px] font-bold ${
-                  isActive ? 'bg-primary text-dash-sidebar' : 'bg-dash-card text-white'
-                }`}
+                onClick={clearAll}
+                className="text-[11px] font-semibold text-primary"
               >
-                {tab.label}
+                Clear
               </button>
-            )
-          })}
-        </div>
-      </div>
+            )}
+          </div>
 
-      {/* Team grid */}
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <p className="text-[18px] font-bold text-white">Top Featured Teams</p>
-          <p className="text-[13px] font-semibold text-primary">SEE ALL</p>
-        </div>
-        {teamsError && <p className="text-[12px] text-dash-live">{teamsError}</p>}
-        {followsLoadError && <p className="text-[12px] text-dash-live">{followsLoadError}</p>}
-        {followError && <p className="text-[12px] text-dash-live">{followError}</p>}
-        {teamsLoading ? (
-          <p className="text-[13px] text-secondary">Loading teams…</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredTeams.map((team) => (
-              <TeamCard
-                key={team.api_team_id}
-                team={team}
-                isFollowing={followedTeams.some((f) => String(f.api_team_id) === String(team.api_team_id))}
-                onToggleFollow={() => handleToggleFollow(team)}
+          <FilterGroup title="Show">
+            {[
+              { value: 'all', label: 'Everything' },
+              { value: 'team', label: 'Teams only' },
+              { value: 'player', label: 'Players only' },
+            ].map((option) => (
+              <FilterOption
+                key={option.value}
+                label={option.label}
+                active={filters.type === option.value}
+                onClick={() => update({ type: option.value })}
               />
             ))}
+          </FilterGroup>
+
+          <FilterGroup title="Position">
+            <FilterOption
+              label="Any position"
+              active={!filters.position}
+              onClick={() => update({ position: '' })}
+            />
+            {facets.positions.map((position) => (
+              <FilterOption
+                key={position}
+                label={position}
+                active={filters.position === position}
+                // Positions only exist on players, so picking one implies
+                // narrowing to players rather than returning zero teams.
+                onClick={() => update({ position, type: 'player' })}
+              />
+            ))}
+          </FilterGroup>
+
+          <FilterGroup title="Group">
+            <FilterOption
+              label="All groups"
+              active={!filters.group}
+              onClick={() => update({ group: '' })}
+            />
+            {facets.groups.map((group) => (
+              <FilterOption
+                key={group}
+                label={group}
+                active={filters.group === group}
+                onClick={() => update({ group })}
+              />
+            ))}
+          </FilterGroup>
+
+          <FilterGroup title="Squad number">
+            <input
+              type="number"
+              min="1"
+              max="99"
+              value={filters.number}
+              onChange={(event) =>
+                update({ number: event.target.value, type: event.target.value ? 'player' : filters.type })
+              }
+              placeholder="e.g. 10"
+              className="w-full rounded-lg border border-dash bg-dash-input px-3 py-2 text-[13px] text-white placeholder:text-secondary focus:border-primary focus:outline-none"
+            />
+          </FilterGroup>
+        </aside>
+
+        {/* Results */}
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] text-secondary">
+              {loading ? 'Searching…' : `${total} result${total === 1 ? '' : 's'}`}
+              {query && !loading && <> for “<span className="text-white">{query}</span>”</>}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="sort" className="text-[12px] text-secondary">
+                Sort
+              </label>
+              <select
+                id="sort"
+                value={filters.sort}
+                onChange={(event) => update({ sort: event.target.value })}
+                className="rounded-lg border border-dash bg-dash-card px-3 py-2 text-[13px] text-white focus:border-primary focus:outline-none"
+              >
+                {SORTS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        )}
+
+          {error && <p className="text-[13px] text-dash-live">{error}</p>}
+
+          {loading && (
+            <div className="flex flex-col gap-3">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-[86px] w-full rounded-xl" />
+              ))}
+            </div>
+          )}
+
+          {!loading && !error && results.length === 0 && (
+            <div className="flex flex-col gap-2 rounded-xl border border-dash bg-dash-card p-6">
+              <p className="text-[14px] font-bold text-white">No results</p>
+              <p className="text-[13px] text-secondary">
+                Nothing matched that search. Try a different name or clear your filters.
+              </p>
+            </div>
+          )}
+
+          {!loading &&
+            results.map((item) =>
+              item.type === 'team' ? (
+                <TeamResult key={`team-${item.id}`} team={item} />
+              ) : (
+                <PlayerResult key={`player-${item.id}`} player={item} />
+              ),
+            )}
+
+          {/* Pagination */}
+          {!loading && total > results.length && (
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => update({ page: String(page - 1) }, { resetPage: false })}
+                className="rounded-lg border border-dash px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-[12px] text-secondary">Page {page}</span>
+              <button
+                type="button"
+                disabled={page * 24 >= total}
+                onClick={() => update({ page: String(page + 1) }, { resetPage: false })}
+                className="rounded-lg border border-dash px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
