@@ -64,12 +64,12 @@ export const demoComments = [
     },
 ];
 
-// Seeded as PENDING (points_awarded 0, settled_at left NULL by the insert) so a
-// fresh `npm run reset` can demonstrate settling. Settle the Final (979139,
-// Argentina 3-3 France) and you can watch the points land:
-//   user 1 predicted 3-3 exactly and follows Argentina (26) -> 100 x2 = +200
-//   user 2 predicted 1-2 (wrong result)                     -> 0
-//   user 3's 978488 prediction stays pending until that match is settled too.
+// These predictions start as pending so settling can be tested after running
+// `npm run reset`. Settling match 979139, Argentina 3-3 France, gives:
+//
+// User 1 predicted 3-3 and follows Argentina: 100 x 2 = 200 points
+// User 2 predicted 1-2 and receives 0 points
+// User 3's prediction for match 978488 remains pending until that match is settled
 export const demoPredictions = [
     {
         user_id: 1,

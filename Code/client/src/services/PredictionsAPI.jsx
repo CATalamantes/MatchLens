@@ -25,7 +25,7 @@ const createPrediction = async (userId, apiMatchId, predictedHomeScore, predicte
   return handleResponse(response)
 }
 
-// Settling scores every unsettled prediction on the match, not just the caller's.
+// Settles every pending prediction for the match, not only the current user's prediction.
 const settleMatch = async (apiMatchId) => {
   const response = await fetch(`/api/predictions/settle/${encodeURIComponent(apiMatchId)}`, {
     method: 'POST'

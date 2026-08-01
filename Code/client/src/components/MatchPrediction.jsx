@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import PredictionsAPI from '../services/PredictionsAPI'
 
-// Same finished-status codes the server settles on — used here to decide whether
-// the wager form is still open or the match can be settled.
+// These are the same finished match statuses used by the server.
+// They determine whether the prediction form should remain open
+// or whether the match is ready to be settled.
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
 
 const currentUser = () => {
@@ -13,8 +14,8 @@ const currentUser = () => {
     }
 }
 
-// Predict a scoreline on a match and, once it's finished, settle it to see the
-// points land. Self-contained so MatchDetail only has to drop it in.
+// Lets the user predict the final score and settle the prediction after the match.
+// Keeping the logic here makes it easier for MatchDetail to include the feature.
 const MatchPrediction = ({ match }) => {
     const user = currentUser()
     const apiMatchId = String(match.id)
@@ -145,15 +146,15 @@ const MatchPrediction = ({ match }) => {
                 </form>
             )}
 
-            {/* No prediction and the match already ended — too late to wager. */}
+            {/* No prediction and the match already ended, so it is too late to predict. */}
             {user && !prediction && finished && (
                 <p className="text-[13px] text-secondary">
                     Predictions are closed — this match has finished.
                 </p>
             )}
 
-            {/* Settling is an explicit action (there's no scheduler). Available once
-                the match is finished; scores everyone's pending predictions. */}
+            {/* Settling is a manual action because there is no scheduler. It becomes
+                available once the match is finished and scores every pending prediction. */}
             {finished && (
                 <div className="flex flex-col gap-1 border-t border-dash pt-3">
                     <button

@@ -86,9 +86,8 @@ CREATE TABLE predictions (
     predicted_home_score  INTEGER NOT NULL CHECK (predicted_home_score >= 0),
     predicted_away_score  INTEGER NOT NULL CHECK (predicted_away_score >= 0),
     points_awarded        INTEGER NOT NULL DEFAULT 0, -- filled in when the match is settled
-    -- NULL until the match result is settled. It's the guard that makes settling
-    -- idempotent: settle only touches rows where settled_at IS NULL, so re-running
-    -- the settle endpoint can never double-credit a user's points.
+    -- Remains NULL until the prediction is settled. We use this to make sure
+    -- the same prediction cannot be settled and credited more than once.
     settled_at            TIMESTAMP,
     submitted_at          TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, api_match_id) -- one prediction per user per match

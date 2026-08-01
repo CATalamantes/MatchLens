@@ -13,7 +13,7 @@ router.get('/user/:userId', getPredictionsByUser)
 // POST /api/predictions
 router.post('/', createPrediction)
 
-// POST /api/predictions/settle/:matchId — score a finished match's predictions
+// Settle and score the predictions for a finished match.
 router.post('/settle/:matchId', settleMatch)
 
 export default router

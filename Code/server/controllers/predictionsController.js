@@ -1,22 +1,22 @@
 import { pool } from '../config/database.js'
 import { footballApiGet } from '../config/footballApi.js'
 
-// Scoring rule for a settled prediction, before the follow bonus:
-//   exact scoreline          -> EXACT_POINTS
-//   right result, wrong score -> RESULT_POINTS   (both won, both drew, or both lost)
-//   wrong result             -> 0
-// Following either team in the match then doubles whatever was earned.
+// Points are calculated using these rules:
+// Exact score: EXACT_POINTS
+// Correct winner or draw, but wrong score: RESULT_POINTS
+// Wrong result: 0
+// The points are doubled if the user follows either team.
 const EXACT_POINTS = 100
 const RESULT_POINTS = 30
 const FOLLOW_MULTIPLIER = 2
 
-// API-Football short status codes that mean the 90'(+ET/pens) result is final.
-// Only these can be settled — an in-play or upcoming match has no result yet.
+// These API Football status codes mean the match is finished.
+// Upcoming or live matches cannot be settled because they do not have a final result yet.
 const FINISHED_STATUSES = new Set(['FT', 'AET', 'PEN'])
 
-// Predictions compare against the 90'+ET scoreline (goals.home/away), so a
-// knockout tie decided on penalties still settles on its 3-3 (etc.) score,
-// which is what the user actually predicted.
+// Predictions are checked against the score after regular time and extra time.
+// Penalty shootout goals are not included because the user predicted the match score,
+// not the number of penalties scored.
 async function getFixtureResult(apiMatchId) {
     const data = await footballApiGet(`/fixtures?id=${apiMatchId}`)
     if (!data.length) return null
@@ -30,7 +30,8 @@ async function getFixtureResult(apiMatchId) {
     }
 }
 
-// -1 / 0 / +1 — lets "same result" be a single comparison instead of three.
+// Returns -1, 0, or 1 so we can easily compare whether both predictions
+// represent a loss, draw, or win.
 function outcome(home, away) {
     return Math.sign(home - away)
 }
@@ -70,9 +71,8 @@ export async function createPrediction(req, res) {
     try {
         const { user_id, api_match_id, predicted_home_score, predicted_away_score } = req.body
 
-        // Guard the insert: the scores land in NOT NULL / CHECK (>= 0) columns,
-        // so reject bad input here with a clear 400 rather than letting Postgres
-        // raise a 500-shaped error the client can't act on.
+        // Validate the scores before inserting them into the database.
+        // This gives the client a useful 400 response instead of a database error.
         if (
             user_id == null ||
             api_match_id == null ||
@@ -87,19 +87,19 @@ export async function createPrediction(req, res) {
             return res.status(400).json({ error: 'Scores cannot be negative.' })
         }
 
-        // You can only wager on a match that hasn't finished. The fixture lookup
-        // is best-effort: if the football API is unreachable we let the wager
-        // through rather than block on it, but a match we can positively see is
-        // over is rejected.
+        // Users can only make predictions before a match has finished.
+        // If the football API is unavailable, the prediction is still allowed
+        // because we do not want an API problem to block the user.
         try {
             const result = await getFixtureResult(api_match_id)
             if (result && FINISHED_STATUSES.has(result.status)) {
                 return res
                     .status(400)
-                    .json({ error: 'This match has already finished — predictions are closed.' })
+                    .json({ error: 'This match has already finished, so predictions are closed.' })
             }
         } catch {
-            // API down / no key / quota spent — don't fail the wager over it.
+            // The football API may be unavailable, missing a key, or out of requests.
+            // In those cases, continue without blocking the prediction.
         }
 
         const inserted = await pool.query(
@@ -109,7 +109,7 @@ export async function createPrediction(req, res) {
         )
         res.status(201).json(inserted.rows[0])
     } catch (error) {
-        // UNIQUE (user_id, api_match_id): one prediction per user per match.
+        // Each user can only submit one prediction for each match.
         if (error.code === '23505') {
             return res
                 .status(409)
@@ -119,10 +119,9 @@ export async function createPrediction(req, res) {
     }
 }
 
-// POST /api/predictions/settle/:matchId — score every unsettled prediction on a
-// finished match and credit the points to each user. Non-RESTful by design:
-// there's no background job, so settling is an explicit action. Idempotent —
-// only rows with settled_at IS NULL are touched, so calling it twice is a no-op.
+// Scores every unsettled prediction for a finished match and adds the points
+// to each user's total. Predictions that were already settled are ignored,
+// so calling this endpoint again will not add the points twice.
 export async function settleMatch(req, res) {
     const apiMatchId = req.params.matchId
 
@@ -137,15 +136,14 @@ export async function settleMatch(req, res) {
         return res.status(404).json({ error: 'Match not found.' })
     }
     if (!FINISHED_STATUSES.has(result.status)) {
-        return res.status(400).json({ error: 'Match is not finished yet — nothing to settle.' })
+        return res.status(400).json({ error: 'Match is not finished yet, so there is nothing to settle.' })
     }
     if (result.home_score == null || result.away_score == null) {
         return res.status(400).json({ error: 'Match has no final score to settle against.' })
     }
 
-    // A transaction so a prediction's points_awarded and the user's total_points
-    // move together — a crash mid-loop can't credit a user without also marking
-    // their prediction settled.
+    // Keep the prediction update and the user's points update in one transaction.
+    // This prevents one update from being saved without the other if something fails.
     const client = await pool.connect()
     try {
         await client.query('BEGIN')
@@ -157,8 +155,8 @@ export async function settleMatch(req, res) {
             [apiMatchId]
         )
 
-        // Which of these users follow one of the two teams — a single query
-        // rather than one per prediction.
+        // Find which users follow either team using one query instead of
+        // running another database query for every prediction.
         const followTeamIds = [String(result.home_id), String(result.away_id)]
         const { rows: followRows } = await client.query(
             `SELECT DISTINCT user_id FROM followed_teams
