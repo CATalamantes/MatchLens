@@ -83,9 +83,13 @@ CREATE TABLE predictions (
     prediction_id        SERIAL PRIMARY KEY,
     user_id              INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     api_match_id          VARCHAR(50) NOT NULL,
-    predicted_home_score  INTEGER NOT NULL,
-    predicted_away_score  INTEGER NOT NULL,
-    points_awarded        INTEGER NOT NULL DEFAULT 0, -- filled in after the match ends
+    predicted_home_score  INTEGER NOT NULL CHECK (predicted_home_score >= 0),
+    predicted_away_score  INTEGER NOT NULL CHECK (predicted_away_score >= 0),
+    points_awarded        INTEGER NOT NULL DEFAULT 0, -- filled in when the match is settled
+    -- NULL until the match result is settled. It's the guard that makes settling
+    -- idempotent: settle only touches rows where settled_at IS NULL, so re-running
+    -- the settle endpoint can never double-credit a user's points.
+    settled_at            TIMESTAMP,
     submitted_at          TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, api_match_id) -- one prediction per user per match
 );

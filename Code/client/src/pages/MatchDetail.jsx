@@ -4,6 +4,7 @@ import Crest from '../components/Crest'
 import StatBar from '../components/StatBar'
 import MatchComments from '../components/MatchComments'
 import MatchEvents from '../components/MatchEvents'
+import MatchPrediction from '../components/MatchPrediction'
 import LineupPitch from '../components/LineupPitch'
 import PossessionCard from '../components/PossessionCard'
 import { API_URL } from '../config/api'
@@ -226,6 +227,7 @@ export default function MatchDetail() {
       {activeTab === 'Overview' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.4fr_1fr]">
           <div className="flex flex-col gap-6">
+            <MatchPrediction match={match} />
             <MatchEvents
               events={events}
               error={sectionErrors.events}
