@@ -4,7 +4,7 @@ CodePath WEB103 Final Project
 
 Designed and developed by: Cristobal Talamantes, Eric Lee, Gildardo Orea, Javohir Ergashev, Rijul Poudel, Shalom Donga
 
-🔗 Link to deployed app:
+🔗 Link to deployed app: https://matchlens-be0m.onrender.com/
 
 ## About
 
